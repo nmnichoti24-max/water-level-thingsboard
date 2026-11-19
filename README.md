@@ -1,5 +1,7 @@
 # ESP32-S3 Water Level Monitoring System
 
+เว็บแอปแยกสำหรับ Final Project อยู่ใน [app/](app/README.md) พร้อมวิธีติดตั้ง ทดสอบ และ Deploy บน Vercel เอกสารด้านล่างอธิบาย ThingsBoard Dashboard เดิมและสคริปต์จำลองที่ใช้ร่วมกัน
+
 โครงงานวัดระดับน้ำด้วย JSN-SR04T และ ESP32-S3-WROOM-1-N16R8 บน PCB ออกแบบเอง ใช้ไฟจาก Power Bank USB-C 5 V บอร์ดออกแบบให้แสดงสถานะด้วย LED เขียว เหลือง แดง และ Active Buzzer พร้อมส่งข้อมูลผ่าน Wi-Fi ไปยัง ThingsBoard Cloud ซึ่งเก็บข้อมูลและแสดง Dashboard
 
 | แหล่งข้อมูล | การไหลของข้อมูล | Device ใน ThingsBoard |
@@ -11,7 +13,9 @@
 
 ตัวอย่างนี้ทดสอบส่งผ่าน HTTPS เข้า ThingsBoard Cloud v4.4.1PAAS สำเร็จ 6 จุดเมื่อวันที่ 19 พฤศจิกายน 2026 ค่าล่าสุด 95 cm, 95% และ `DANGER` กราฟตัวอย่างบันทึกช่วงย้อนหลังแบบคงที่สำหรับรอบสาธิต หากส่งข้อมูลรอบใหม่แล้วต้องการดูจุดใหม่ในกราฟ ให้เปลี่ยนช่วงเวลาหรือใช้ Realtime ตามขั้นที่ 2 [ไฟล์ Export ของ Dashboard](dashboard/water-level-monitoring-dashboard.json) · [ภาพผลการทดสอบ](screenshots/dashboard-sim.png)
 
-**Application Deployment URL** เปิดได้จากเบราว์เซอร์โดยไม่ต้องลงชื่อเข้าใช้ ThingsBoard ข้อมูลบนลิงก์นี้มาจาก Device จำลอง `ESP32-S3-Water-Level-SIM` [เปิด Water Level Monitoring Dashboard](https://thingsboard.cloud/dashboard/6a182b80-e40e-11f1-b8a1-9db681a717b8?publicId=a5b263d0-e40f-11f1-b50d-0302f5370387)
+**Application Deployment URL** เปิดเว็บแอปบน Vercel ได้โดยไม่ต้องลงชื่อเข้าใช้ เลือก **SIM · ESP32-S3-Water-Level-SIM** เพื่ออ่านข้อมูลจำลองจาก ThingsBoard Cloud [เปิด Water Level Monitor](https://esp32s3-water-level-monitor.vercel.app/)
+
+**ThingsBoard Dashboard** เปิดดู Widget ของโครงงานจากบริการ ThingsBoard โดยตรงได้ [เปิด Water Level Monitoring Dashboard](https://thingsboard.cloud/dashboard/6a182b80-e40e-11f1-b8a1-9db681a717b8?publicId=a5b263d0-e40f-11f1-b50d-0302f5370387)
 
 **GitHub Application Repository** [water-level-thingsboard](https://github.com/nmnichoti24-max/water-level-thingsboard)
 
@@ -26,7 +30,7 @@
 
 ## ข้อมูลที่ส่ง
 
-ส่งทั้งสี่คีย์ใน JSON ชุดเดียวทุกครั้ง ThingsBoard จะกำหนดเวลารับข้อมูลตามเวลาของเซิร์ฟเวอร์เมื่อใช้ payload แบบนี้ [ThingsBoard Cloud HTTP Telemetry API](https://thingsboard.io/docs/paas/reference/http-api/telemetry/)
+สคริปต์จำลองส่งทั้งหกคีย์ใน `values` พร้อม `ts` จากเวลา Windows หน่วย Unix milliseconds สคริปต์ใช้เวลาเดิมเมื่อส่งจุดเดิมซ้ำ [ThingsBoard Cloud HTTP Telemetry API](https://thingsboard.io/docs/paas/reference/http-api/telemetry/)
 
 | คีย์ | ชนิด | ความหมาย |
 | --- | --- | --- |
@@ -34,6 +38,8 @@
 | `waterLevel` | ตัวเลข | ความสูงของน้ำจากระดับอ้างอิง 0 หน่วย cm |
 | `waterPercent` | ตัวเลข | ระดับน้ำในช่วงใช้งาน 0–100% |
 | `status` | ข้อความ | `NORMAL`, `WARNING` หรือ `DANGER` |
+| `sensorValid` | Boolean | `true` เมื่อค่าระยะใช้ได้ หรือ `false` เมื่อเซนเซอร์อ่านไม่ได้ |
+| `uptime` | ตัวเลข | จำนวนวินาทีตั้งแต่เริ่มรัน Simulation หรือเปิดบอร์ด |
 
 สูตรคือ `ช่วงใช้งาน = ระยะเมื่อว่าง − ระยะเมื่อเต็ม` โดยช่วงใช้งานต้องมากกว่า 0 คำนวณ `waterLevel = ระยะเมื่อว่าง − distance` แล้วจำกัดให้อยู่ในช่วง 0 ถึงช่วงใช้งาน จากนั้นคำนวณ `waterPercent = 100 × waterLevel ÷ ช่วงใช้งาน` และปัดเป็นหนึ่งตำแหน่งก่อนเลือกสถานะ ค่าทดสอบในสคริปต์กำหนดระยะเมื่อว่าง 130 cm และระยะเมื่อเต็ม 30 cm สำหรับบอร์ดจริงให้วัดสองระยะจากตำแหน่งติดตั้งจริง ระดับเต็มต้องอยู่ในช่วงที่เซนเซอร์รุ่นที่ติดตั้งอ่านได้
 
@@ -59,27 +65,19 @@
 
    หากเครื่องแจ้งว่า execution policy บล็อกสคริปต์ ให้เปิดอ่านไฟล์ก่อน แล้วรัน `Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned` ในหน้าต่างนี้และลองอีกครั้ง หากไฟล์มาจาก ZIP หรือการดาวน์โหลดและถูกทำเครื่องหมายจากอินเทอร์เน็ต ให้ใช้ `Unblock-File -LiteralPath .\scripts\Send-SimulatedTelemetry.ps1` หลังตรวจไฟล์แล้ว หากมีนโยบายองค์กรบังคับ ให้ใช้ PowerShell ที่ผู้ดูแลอนุญาต
 
-5. ตั้งตัวแปร Environment ชั่วคราวในหน้าต่างเดิม รันโค้ดนี้ จากนั้นวาง Token ของ Device `-SIM` เมื่อขึ้นข้อความให้กรอก แล้วกด Enter ค่าในช่องกรอกจะถูกซ่อนและ Token จะอยู่ใน Environment ของโปรเซส PowerShell นี้
-
-   ```powershell
-   $simTokenInput = Read-Host 'Paste the SIM device Access Token' -AsSecureString
-   $env:THINGSBOARD_SIM_DEVICE_TOKEN = [System.Net.NetworkCredential]::new('', $simTokenInput).Password
-   Remove-Variable simTokenInput
-   ```
-
-6. ส่งข้อมูลไปยังภูมิภาคของคุณ เลือกคำสั่งหนึ่งบรรทัด
+5. เริ่มส่งไปยังภูมิภาคของคุณ เลือกคำสั่งหนึ่งบรรทัด แล้ววาง Access Token ของ Device `ESP32-S3-Water-Level-SIM` ในช่องกรอกที่ซ่อนค่า
 
    ```powershell
    # North America
-   .\scripts\Send-SimulatedTelemetry.ps1 -CloudHost thingsboard.cloud
+   .\scripts\Send-SimulatedTelemetry.ps1 -PromptForToken
 
    # Europe
-   .\scripts\Send-SimulatedTelemetry.ps1 -CloudHost eu.thingsboard.cloud
+   .\scripts\Send-SimulatedTelemetry.ps1 -CloudHost eu.thingsboard.cloud -PromptForToken
    ```
 
-   สคริปต์ส่ง 6 จุด ห่างกันจุดละ 2 วินาที และพิมพ์ผล HTTP ของแต่ละจุด เมื่อได้ผลสำเร็จรหัส 2xx เช่น `SIM HTTP 200` ครบ ให้ไปที่ขั้นถัดไป หากได้ 401 หรือคำขอล้มเหลว ให้เช็กภูมิภาค Token ของ Device จำลอง และการเชื่อมต่อ ถ้าล้มเหลวกลางชุด จุดที่ส่งสำเร็จก่อนหน้าอาจอยู่ในกราฟแล้ว
-7. ไปที่ **Devices → ESP32-S3-Water-Level-SIM → Latest telemetry** ควรเห็น `distance = 35`, `waterLevel = 95`, `waterPercent = 95` และ `status = DANGER` พร้อมเวลาที่อัปเดตล่าสุด คีย์จะปรากฏหลังส่งข้อมูลได้สำเร็จ สลับไปดู **Latest telemetry** ของ Device จริงและตรวจว่ารอบจำลองนี้ไม่ได้เพิ่มข้อมูลใน Device นั้น [การตรวจข้อมูลจาก Device](https://thingsboard.io/docs/paas/user-guide/devices/)
-8. หลังทดสอบ Dashboard เสร็จ ให้ปิดหน้าต่าง PowerShell หรือรัน `Remove-Item Env:THINGSBOARD_SIM_DEVICE_TOKEN -ErrorAction SilentlyContinue` เพื่อเอา Token ออกจากหน้าต่างนั้น
+   สคริปต์ส่งทุก 5 วินาที จาก 20% ขึ้นถึง 95% แล้วลงมาที่ 20% วนซ้ำ ผล `SIM HTTP 200` หรือ 2xx คือคำขอที่ ThingsBoard รับแล้ว หากตอบ 401 ให้เช็กภูมิภาคและ Token ของ Device จำลอง
+6. เปิด **Devices → ESP32-S3-Water-Level-SIM → Latest telemetry** ตรวจคีย์ `distance`, `waterLevel`, `waterPercent`, `status`, `sensorValid` และ `uptime` พร้อมเวลาที่เปลี่ยนไป ตอนถึง 95% จะเห็นระยะ 35 cm และสถานะ DANGER เมื่อใช้ค่าคาลิเบรตเริ่มต้น [การตรวจข้อมูลจาก Device](https://thingsboard.io/docs/paas/user-guide/devices/)
+7. กด **Ctrl+C** ในหน้าต่าง PowerShell เพื่อหยุดส่ง หากต้องการทดสอบ Vercel, History, Alerts และ Offline ทำตาม [คู่มือ Simulation ของเว็บแอป](app/README.md#simulation-บน-windows) หากตั้ง `THINGSBOARD_SIM_DEVICE_TOKEN` เองให้ลบด้วย `Remove-Item Env:THINGSBOARD_SIM_DEVICE_TOKEN` หลังใช้งาน
 
 <a id="step-2"></a>
 ## ขั้นที่ 2 — สร้าง Water Level Monitoring Dashboard
@@ -96,48 +94,32 @@
    </div>
    ```
 
-5. คลิก **Add widget → Charts → Time series chart** เลือก Device เดิม ใน **Series** เพิ่ม `waterLevel` ตั้ง **Chart type** เป็น **Line** และ **Units** เป็น `cm` ตั้งชื่อกราฟ `ระดับน้ำย้อนหลัง (SIM)` กำหนด **Time window** เป็น **Realtime** ช่วง **Last 30 minutes** และ **Aggregation → None** เพื่อให้รอบทดสอบที่ส่งห่างกัน 2 วินาทีเห็นเป็นจุดแยกกัน หาก Widget ใช้เวลาร่วมกับ Dashboard ให้ตั้งที่แถบด้านบนของ Dashboard [คู่มือ Time Series Chart](https://thingsboard.io/docs/paas/reference/widgets/charts/time-series-chart/)
+5. คลิก **Add widget → Charts → Time series chart** เลือก Device เดิม ใน **Series** เพิ่ม `waterLevel` ตั้ง **Chart type** เป็น **Line** และ **Units** เป็น `cm` ตั้งชื่อกราฟ `ระดับน้ำย้อนหลัง (SIM)` กำหนด **Time window** เป็น **Realtime** ช่วง **Last 30 minutes** และ **Aggregation → None** เพื่อให้รอบทดสอบที่ส่งห่างกัน 5 วินาทีเห็นเป็นจุดแยกกัน หาก Widget ใช้เวลาร่วมกับ Dashboard ให้ตั้งที่แถบด้านบนของ Dashboard [คู่มือ Time Series Chart](https://thingsboard.io/docs/paas/reference/widgets/charts/time-series-chart/)
 6. วางการ์ดสามใบไว้แถวบนและกราฟเต็มแถวล่าง กด **Save** แล้วส่งข้อมูลอีกครั้ง ใช้ `-DelaySeconds 5` ต่อท้ายคำสั่งส่งเพื่อให้มีเวลาดูสถานะเปลี่ยนจาก `NORMAL` → `WARNING` → `DANGER` ตรวจว่าเวลาในการ์ดเปลี่ยนและกราฟมีจุดใหม่ หากกราฟว่าง ให้เช็กช่วงเวลาของกราฟและเปิด **Latest telemetry** เพื่อดูว่ามีข้อมูลเข้า Device ถูกตัว
 7. เมื่อต่อบอร์ดจริงและเห็นสี่คีย์ใน **Latest telemetry** ของ `ESP32-S3-Water-Level` แล้ว ให้เปลี่ยน Datasource ของ Widget ทั้งสี่ไปยัง Device จริงและแก้ป้ายกำกับ SIM ให้ระบุว่าเป็น ESP32 ตรวจข้อมูลอีกครั้ง หากส่งงานด้วยข้อมูลจำลอง ให้คงป้าย SIM ไว้เพื่อให้อาจารย์เห็นที่มาของข้อมูล
 8. เมื่อ Dashboard พร้อม ให้เปิดเมนู **Export dashboard → Export JSON configuration** เซฟเป็น `dashboard/water-level-monitoring-dashboard.json` ไฟล์มาจาก Cloud ที่คุณใช้งาน หากต้องนำเข้า ให้ใช้ **Monitor → Dashboards → + Add dashboard → Import dashboard** แล้วตรวจ Datasource ของทุก Widget โดยเฉพาะเมื่อย้าย tenant จับภาพ Dashboard ด้วย `Win + Shift + S` หรือ **Export dashboard → PNG** และเก็บใน `screenshots/` [การ Export และ Import Dashboard](https://thingsboard.io/docs/paas/user-guide/dashboards/#export-and-import-dashboard)
 
 <a id="step-3"></a>
-## ขั้นที่ 3 — สร้าง Public GitHub Repository
+## ขั้นที่ 3 — Commit และเผยแพร่ด้วย GitHub Desktop
 
-1. ติดตั้ง Git for Windows หากยังไม่มี เปิด PowerShell ที่โฟลเดอร์ `water-level-thingsboard` แล้วรัน `git --version` [ดาวน์โหลด Git for Windows](https://git-scm.com/install/windows)
-2. ลงชื่อเข้า GitHub แล้วคลิก **New repository** เลือกบัญชีของคุณเป็น **Owner** ตั้ง **Repository name** เป็น `water-level-thingsboard` เลือก **Public** ปล่อยตัวเลือก README, .gitignore และ License ไว้ตามค่าเริ่มต้นเพื่อสร้าง repo ว่าง แล้วกด **Create repository** คัดลอก HTTPS URL จากหน้า **Quick setup** [คู่มือ GitHub สำหรับนำโค้ดจากเครื่องขึ้น repo](https://docs.github.com/en/migrations/importing-source-code/using-the-command-line-to-import-source-code/adding-locally-hosted-code-to-github)
-3. สร้าง Git repo ในเครื่องและเลือกไฟล์ที่จะส่ง
-
-   ```powershell
-   git init -b main
-   git add -- README.md .gitignore scripts/ dashboard/ screenshots/
-   git status --short
-   git diff --cached
-   ```
-
-   ตรวจไฟล์ที่จะ Commit รวมถึง JSON และภาพที่มาจาก Cloud ให้มีเฉพาะข้อมูลพร้อมเผยแพร่ เก็บ Token และรหัสผ่าน Wi-Fi ไว้ใน Environment หรือไฟล์ลับที่ถูก ignore แล้วตรวจว่าไม่มีข้อมูลลับถูก Stage หากต้องการเช็กกฎ ignore ให้รัน `git check-ignore .env .env.local secrets.h`
-4. Commit และ Push ในบรรทัด `git remote add` ให้แทนข้อความทั้งก้อนในเครื่องหมายคำพูดด้วย HTTPS URL ที่คัดลอกจาก GitHub
-
-   ```powershell
-   git commit -m "Add ThingsBoard water level monitoring project"
-   git remote add origin "PASTE_GITHUB_HTTPS_URL_HERE"
-   git remote -v
-   git push -u origin main
-   ```
-
-   หาก Git ขอชื่อและอีเมล ให้ตั้ง `git config user.name "ชื่อของคุณ"` และ `git config user.email "อีเมลที่ใช้กับ GitHub"` ใน repo นี้ แล้วรัน Commit อีกครั้ง หากตอน Push มีหน้าต่าง Git Credential Manager ให้ลงชื่อเข้า GitHub ผ่านหน้าต่างนั้น เปิดหน้า repo เพื่อตรวจว่าไฟล์ขึ้นครบแล้วเก็บ URL จริงไว้ส่งอาจารย์
+1. ติดตั้ง **GitHub Desktop** สำหรับ Windows ถ้ายังไม่มี เปิดแอปแล้วไปที่ **File → Options → Accounts → Sign in** ลงชื่อเข้าใช้ GitHub ด้วยบัญชีเจ้าของ Repository [ดาวน์โหลด GitHub Desktop](https://desktop.github.com/download/) · [คู่มือเริ่มต้น](https://docs.github.com/en/desktop/overview/getting-started-with-github-desktop)
+2. ใน GitHub Desktop ไปที่ **File → Add local repository → Choose** เลือกโฟลเดอร์ `water-level-thingsboard` ที่มีไฟล์นี้และกด **Add repository** ตรวจว่า **Current branch** คือ `main` [คู่มือ Add local repository](https://docs.github.com/en/desktop/adding-and-cloning-repositories/adding-a-repository-from-your-local-computer-to-github-desktop?platform=windows)
+3. เปิดแท็บ **Changes** ตรวจชื่อไฟล์และเนื้อหาก่อน Commit ไฟล์ที่ส่งได้อยู่ใน `dashboard/`, `scripts/`, `screenshots/` รวมถึง `README.md` และ `.gitignore` เก็บ Token และรหัสผ่าน Wi-Fi ไว้ใน Environment หรือไฟล์ที่ถูก ignore
+4. กรอกช่อง **Summary** เป็น `Add final ThingsBoard dashboard export and screenshot` แล้วกด **Commit to main**
+5. สำหรับ Repository ของโครงงานนี้ซึ่งเปิด **Public** บน GitHub แล้ว ให้กด **Push origin** จากนั้นคลิก **View on GitHub** และตรวจว่ามีไฟล์ JSON ใน `dashboard/` และภาพ `screenshots/dashboard-sim.png` [คู่มือ Push origin](https://docs.github.com/en/desktop/making-changes-in-a-branch/pushing-changes-to-github-from-github-desktop)
+6. ถ้าทำตามวิธีอาจารย์กับโครงงานใหม่ที่ยังไม่มี Repository ออนไลน์ ให้กด **Publish repository** หลัง Commit กรอกชื่อ Repository เอาเครื่องหมายออกจาก **Keep this code private** แล้วกด **Publish Repository** [คู่มือ Publish repository](https://docs.github.com/en/desktop/overview/creating-your-first-repository-using-github-desktop#part-4-publishing-your-repository-to-github)
 
 <a id="step-4"></a>
-## ขั้นที่ 4 — แชร์ Application Deployment URL
+## ขั้นที่ 4 — แชร์ ThingsBoard Dashboard
 
-**ให้อาจารย์ยืนยันก่อนว่ายอมรับ ThingsBoard Dashboard URL เป็น Application Deployment URL** ขั้นตอนนี้อ้างอิงหน้าจอ ThingsBoard Cloud สำหรับ North America และ Europe ใช้บัญชี **Tenant Administrator** ในการตั้งกลุ่มและสิทธิ์ [คู่มือ Cloud North America](https://thingsboard.io/docs/paas/user-guide/dashboards/#make-dashboard-public) · [คู่มือ Cloud Europe](https://thingsboard.io/docs/paas/eu/user-guide/dashboards/#make-dashboard-public)
+สำหรับการตั้งค่า Application Deployment URL ของเว็บแอปให้ดู [คู่มือ Deploy บน Vercel](app/README.md#deploy-บน-vercel) ขั้นตอนด้านล่างใช้แชร์ Dashboard ของ ThingsBoard สำหรับ North America และ Europe ต้องใช้บัญชี **Tenant Administrator** ในการตั้งกลุ่มและสิทธิ์ [คู่มือ Cloud North America](https://thingsboard.io/docs/paas/user-guide/dashboards/#make-dashboard-public) · [คู่มือ Cloud Europe](https://thingsboard.io/docs/paas/eu/user-guide/dashboards/#make-dashboard-public)
 
 1. ไปที่ **Devices & assets → Devices → Groups → + Add entity group** สร้างกลุ่ม `Water Level Public Devices` กลับไปหน้าอุปกรณ์กลุ่ม **All** เลือกเฉพาะ Device ที่ Dashboard ใช้ แล้วกด **Add to group** และเลือกกลุ่มที่เพิ่งสร้าง ตรวจสมาชิกในกลุ่มก่อนเผยแพร่ เพราะสิทธิ์ Public ครอบคลุมข้อมูลของ Device ในกลุ่ม [คู่มือ Devices](https://thingsboard.io/docs/paas/user-guide/devices/) · [คู่มือ Entity Groups](https://thingsboard.io/docs/paas/user-guide/groups/)
 2. ไปที่ **Monitor → Dashboards → Groups → + Add entity group** สร้างกลุ่ม `Water Level Public Dashboards` กลับไปหน้ารายการ Dashboard กดไอคอนดินสอที่ Dashboard → **Manage owner and groups** เลือกกลุ่มใหม่ใน **Groups** แล้วกด **Update**
 3. ในแท็บ **Groups** กด **Make public** และยืนยันสำหรับ **ทั้งสองกลุ่มที่สร้างขึ้น** คือกลุ่ม Device และกลุ่ม Dashboard อย่าเปิด Public ที่กลุ่ม **All** ThingsBoard จะสร้างบัญชีระบบ **Public** สำหรับสิทธิ์ดูแบบอ่านอย่างเดียว ผู้ชมต้องมีสิทธิ์ที่กลุ่มข้อมูลด้วยจึงจะเห็นค่าใน Widget
 4. เปิดกลุ่ม `Water Level Public Dashboards` คลิกไอคอน **Public dashboard link** ข้าง Dashboard แล้วกด **Copy public link** ใช้ลิงก์ที่ Cloud สร้างจากเมนูนี้
 5. เปิด Edge แบบ **InPrivate** หรือ Chrome แบบ **Incognito** โดยยังไม่ได้เข้าสู่ระบบ ThingsBoard แล้ววางลิงก์ ตรวจว่าหน้าเปิดได้โดยไม่ขอ Login ตรวจการ์ดหน่วย cm และ % สถานะ เวลาล่าสุด และกราฟ หากหน้าเปิดแต่ข้อมูลว่าง ให้ตรวจว่ากลุ่ม Device ที่เปิด Public มี Device ตัวเดียวกับ Datasource และส่งข้อมูลล่าสุดแล้ว หากส่งงานจากข้อมูล SIM ที่ส่งเพียงรอบเดียว ให้แก้ช่วงเวลาของกราฟเป็น **History → Range** กำหนดเวลาเริ่มและสิ้นสุดให้ครอบเวลาที่ส่งข้อมูล กด **Save** แล้วทดสอบซ้ำในหน้าต่างส่วนตัว [คู่มือ Time Window](https://thingsboard.io/docs/paas/user-guide/time-window/)
-6. เมื่อทดสอบผ่าน ให้ส่ง **URL ของ Public GitHub Repository** และ **Public dashboard link** ที่คัดลอกจาก Cloud หลังอาจารย์ยืนยัน หากภายหลังสลับจาก SIM ไปบอร์ดจริง ให้ปรับสมาชิกกลุ่ม Device ให้ตรงกับ Datasource และทดสอบลิงก์แบบไม่ Login อีกครั้ง
+6. เมื่อส่งงาน ใช้ **URL ของ Public GitHub Repository** และ **Application Deployment URL จาก Vercel** ตามรายการด้านบน แนบลิงก์ ThingsBoard Dashboard เพิ่มได้ หากภายหลังสลับจาก SIM ไปบอร์ดจริง ให้ปรับสมาชิกกลุ่ม Device ให้ตรงกับ Datasource และทดสอบสิทธิ์การเปิดลิงก์อีกครั้ง
 
 ## นำบอร์ดจริงมาใช้งานโดยเก็บ Dashboard สาธิตไว้
 
