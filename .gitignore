@@ -1,5 +1,6 @@
 .env
 .env.*
+!app/.env.example
 secrets/
 secrets.h
 arduino_secrets.h
