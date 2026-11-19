@@ -1,0 +1,14 @@
+.env
+.env.*
+secrets/
+secrets.h
+arduino_secrets.h
+config.local.*
+*.pem
+*.key
+*.pfx
+*.log
+.pio/
+build/
+Thumbs.db
+Desktop.ini
