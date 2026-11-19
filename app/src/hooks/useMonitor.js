@@ -1,36 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { RANGES, SCENARIO, alertHistory, measure, simulate } from './model'
-
-const ERROR_TEXT = {
-  CLOUD_NOT_CONFIGURED: 'ยังไม่ได้เปิดการอ่านข้อมูล ThingsBoard ที่เซิร์ฟเวอร์',
-  UPSTREAM_ACCESS_DENIED: 'ThingsBoard ปฏิเสธสิทธิ์อ่านข้อมูล ตรวจ API key และสิทธิ์ของ Device',
-  UPSTREAM_RATE_LIMIT: 'ThingsBoard จำกัดความถี่ชั่วคราว ลองใหม่ภายหลัง',
-  UPSTREAM_UNREACHABLE: 'เชื่อมต่อ ThingsBoard ไม่สำเร็จหรือคำขอหมดเวลา',
-  DEVICE_NOT_ALLOWED: 'Device นี้ยังไม่ได้กำหนดในเซิร์ฟเวอร์',
-}
-
-async function read(operation, { device, range, signal } = {}) {
-  const query = new URLSearchParams({ op: operation })
-  if (device) query.set('device', device)
-  if (range) query.set('range', range)
-  const result = await fetch('/api/telemetry?' + query, { signal, cache: 'no-store' })
-  const body = await result.json().catch(() => ({}))
-  if (!result.ok) throw new Error(ERROR_TEXT[body.error] ?? 'อ่านข้อมูลจาก ThingsBoard ไม่สำเร็จ')
-  return body
-}
+import { RANGES, SCENARIO, alertHistory, measure, simulate } from '../model'
+import { readTelemetry } from '../lib/telemetryClient'
 
 export function useDevices() {
   const [state, setState] = useState({ devices: [], loading: true, error: '' })
+  const [attempt, setAttempt] = useState(0)
+  function retry() {
+    setState((previous) => ({ ...previous, loading: true, error: '' }))
+    setAttempt((value) => value + 1)
+  }
   useEffect(() => {
     const task = new AbortController()
-    read('devices', { signal: task.signal })
-      .then(({ devices }) => setState({ devices: Array.isArray(devices) ? devices : [], loading: false, error: '' }))
-      .catch(() => {
-        if (!task.signal.aborted) setState({ devices: [], loading: false, error: 'ติดต่อ API ของเว็บไม่ได้' })
+    readTelemetry('devices', { signal: task.signal })
+      .then(({ devices }) => {
+        if (!task.signal.aborted) setState({ devices, loading: false, error: '' })
+      })
+      .catch((error) => {
+        if (!task.signal.aborted) setState((previous) => ({ ...previous, loading: false, error: error.message }))
       })
     return () => task.abort()
-  }, [])
-  return state
+  }, [attempt])
+  return { ...state, retry }
 }
 
 function demoSeed() {
@@ -74,7 +64,7 @@ export function useMonitor(source, settings, range, paused) {
     let timer
     const run = async () => {
       try {
-        const value = await read('latest', { device: source, signal: task.signal })
+        const value = await readTelemetry('latest', { device: source, signal: task.signal })
         if (!task.signal.aborted) setLatest({ key: source, value, loading: false, error: '' })
       } catch (error) {
         if (!task.signal.aborted) setLatest((prev) => ({
@@ -95,7 +85,7 @@ export function useMonitor(source, settings, range, paused) {
     let timer
     const run = async () => {
       try {
-        const value = await read('history', { device: source, range, signal: task.signal })
+        const value = await readTelemetry('history', { device: source, range, signal: task.signal })
         if (!task.signal.aborted) setHistory({ key: historyKey, value, loading: false, error: '' })
       } catch (error) {
         if (!task.signal.aborted) setHistory((prev) => ({

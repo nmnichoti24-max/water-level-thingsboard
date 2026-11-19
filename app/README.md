@@ -56,6 +56,37 @@
 - การแจ้งเตือนในฉบับนี้อยู่บนหน้าเว็บ หากจะเก็บ Alarms ถาวร ให้ใช้ ThingsBoard Device Profile หรือ Rule Chain กับสถานะที่เฟิร์มแวร์ส่ง แล้วเพิ่ม route อ่าน Alarm API ฝั่ง Proxy ตามสิทธิ์ที่กำหนด
 - เกณฑ์และการคาลิเบรตบันทึกไว้ในเบราว์เซอร์ แยกตามแหล่งข้อมูล การตั้งค่าเว็บไม่มีผลกับเฟิร์มแวร์
 
+## Simulation บน Windows
+
+1. เปิด PowerShell 5.1 หรือ 7 จากโฟลเดอร์หลัก `water-level-thingsboard` ตรวจข้อมูลหนึ่งรอบโดยไม่ส่งขึ้น Cloud
+
+   ```powershell
+   .\scripts\Send-SimulatedTelemetry.ps1 -Preview
+   ```
+
+2. ใน ThingsBoard เปิด **Devices → ESP32-S3-Water-Level-SIM → Copy access token** แล้วรันคำสั่งด้านล่าง นำ Token ของ Device จำลองวางในช่องกรอกที่ซ่อนค่า หากอยู่ภูมิภาคยุโรป ให้เพิ่ม `-CloudHost eu.thingsboard.cloud`
+
+   ```powershell
+   .\scripts\Send-SimulatedTelemetry.ps1 -PromptForToken
+   ```
+
+   ค่าปกติส่งทุก 5 วินาที วน 20% → 95% → 20% ครั้งละ 5 จุดเปอร์เซ็นต์ กด **Ctrl+C** เพื่อหยุด หรือเพิ่ม `-Cycles 1` เพื่อจบเองหลังครบหนึ่งรอบ ประมาณ 2 นาที 30 วินาที เมื่อเครือข่ายขัดข้องหรือ ThingsBoard ตอบ HTTP 408, 429 หรือ 5xx สคริปต์ลองส่งจุดเดิมได้ 3 ครั้งรวมครั้งแรก โดยรอ 1 และ 2 วินาทีก่อนลองใหม่ หากยังส่งไม่ได้ จะข้ามจุดนั้นแล้วส่งค่าถัดไป เมื่อพบ 401, 403 หรือ 404 ให้ตรวจภูมิภาคและคัดลอก Token ของ Device จำลองอีกครั้ง
+
+   สคริปต์ถาม Token แบบซ่อนค่าเมื่อไม่ได้ตั้ง `THINGSBOARD_SIM_DEVICE_TOKEN` และใช้ Token ในหน่วยความจำของ PowerShell เท่านั้น หากตั้งตัวแปรนั้นในโปรเซส PowerShell นี้ ให้ลบด้วย `Remove-Item Env:THINGSBOARD_SIM_DEVICE_TOKEN` เมื่อเสร็จ
+
+3. ที่ [เว็บแอปบน Vercel](https://esp32s3-water-level-monitor.vercel.app/) เลือก **SIM · ESP32-S3-Water-Level-SIM** แล้วตรวจป้าย **SIMULATED DATA** ที่หน้า **ภาพรวม** ดูเวลารับข้อมูลล่าสุดและตัวเลขที่เปลี่ยนตามรอบ ที่หน้า **ประวัติระดับน้ำ** เลือก **1 ชม.** และดูจุดใหม่ในกราฟ ที่หน้า **การแจ้งเตือน** ตรวจการเข้าสู่ WARNING แล้ว DANGER ระหว่างขาขึ้น ข้อมูลล่าสุดจะดึงทุก 10 วินาทีตามค่าเริ่มต้น ส่วนประวัติจะดึงทุก 30 วินาทีตามค่าเริ่มต้น หรือกด **รีเฟรช** ที่หน้าภาพรวม
+4. ทดสอบ Offline ขณะที่เว็บแสดง Online ให้กด **Ctrl+C** ที่ PowerShell แล้วรอเกินค่า **แสดง Offline หลังผ่าน** ใน Settings ค่าเริ่มต้น 60 วินาทีนับจากเวลาของข้อมูลล่าสุด ตรวจว่าขึ้น **Offline** และยังแสดงค่าครั้งก่อน รันคำสั่งเริ่มอีกครั้งแล้วรอการดึงข้อมูลรอบถัดไปเพื่อยืนยันว่าเวลาล่าสุดเดินต่อและกลับเป็น **Online** ช่อง **Device Activity** ใช้เกณฑ์ของ ThingsBoard แยกต่างหาก
+
+ค่าเริ่มต้นของสคริปต์ตรงกับโปรไฟล์ SIM ของเว็บ ความสูงช่วงใช้งาน 100 cm ระยะเผื่อติดตั้ง 30 cm, WARNING ≥70% และ DANGER ≥85% สคริปต์ใช้ `distance = sensorOffset + tankHeight × (1 − waterPercent/100)` ส่ง `distance`, `waterLevel`, `waterPercent`, `status`, `sensorValid = true` และ `uptime` เป็นจำนวนวินาทีตั้งแต่เริ่ม Simulation แต่ละจุดมีเวลาเก็บตัวอย่างของ Windows และใช้เวลาเดิมเมื่อส่งซ้ำ ตรวจทั้งหกคีย์ที่ **ThingsBoard → Devices → ESP32-S3-Water-Level-SIM → Latest telemetry** หากแก้ค่าใน Settings ให้ส่งพารามิเตอร์ที่ตรงกัน เช่น
+
+```powershell
+.\scripts\Send-SimulatedTelemetry.ps1 -PromptForToken -TankHeightCm 120 -SensorOffsetCm 30 -WarningPercent 75 -DangerPercent 90
+```
+
+หากเปลี่ยนช่วงระยะที่ Settings ให้ใช้ `-MinDistanceCm` และ `-MaxDistanceCm` ให้ตรงกันด้วย สคริปต์รันบน Windows ส่วน Vercel ทำหน้าที่อ่านข้อมูลที่เก็บใน ThingsBoard
+
+เว็บคำนวณอายุของข้อมูลจากเวลาที่สคริปต์ส่งมา ตั้งเวลา Windows และอุปกรณ์ที่เปิดเว็บให้ตรงเพื่อทดสอบ Offline Timeout
+
 ## การต่อ ESP32-S3 ในอนาคต
 
 ยืนยัน Schematic และ PCB Revision ก่อนเลือก GPIO ของ TRIG, ECHO, LED และ Buzzer ตรวจแรงดันสัญญาณของ JSN-SR04T รุ่นจริงกับขาที่ใช้บนบอร์ดก่อนต่อ และคาลิเบรตระยะที่ถังว่างและเต็มก่อนเทียบค่ากับหน้าเว็บ
@@ -87,13 +118,19 @@
 
 ## Deploy บน Vercel
 
-1. ใน Vercel เลือก **Add New → Project** นำเข้า Repository นี้ ตั้ง **Root Directory** เป็น `app` เลือก Vite และ Node.js 22.x
-2. ใช้บัญชีและโปรเจกต์บนแผน **Hobby** หากเข้าเงื่อนไขของ Vercel เลือกเปิดเฉพาะ SIM สำหรับการนำเสนอแบบ public แล้วกด **Deploy** Vercel จะ build `dist/` และผูก `api/telemetry.js` เป็น Function [Vercel Hobby](https://vercel.com/docs/plans/hobby)
-3. เปิด Production Domain ที่ Vercel รายงาน ตรวจหน้า DEMO และเลือก **SIM · ESP32-S3-Water-Level-SIM** เมื่อเปิดไว้ ทดสอบ `/api/telemetry?op=devices` จากโดเมนเดียวกันเพื่อยืนยันว่า Function ตอบ JSON
-4. หาก Deploy ด้วย CLI ให้เข้าโฟลเดอร์ `app/` แล้วใช้ `npx vercel@latest login` และ `npx vercel@latest deploy --prod` ตั้งค่าลับใน Vercel Environment Variables และ redeploy หลังแก้ไข [คู่มือ Vercel CLI](https://vercel.com/docs/projects/deploy-from-cli)
+1. โปรเจกต์ Vercel ที่ใช้อยู่สร้างด้วย CLI จากโฟลเดอร์ `app/` จึงแสดง Root Directory เป็น `.` หากนำเข้าจาก GitHub ทั้ง Repository ให้ตั้ง **Root Directory** เป็น `app` เลือก **Vite** และใช้ Node.js 22.x ตาม `engines.node` ใน `app/package.json` Vercel จะ build ไปยัง `dist/` และใช้ `api/telemetry.js` เป็น Function [Vite บน Vercel](https://vercel.com/docs/frameworks/frontend/vite) · [Node.js บน Vercel](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions)
+2. ใช้แผน **Hobby** สำหรับการสาธิต ตั้ง `TB_ORIGIN`, `TB_ENABLE_CLOUD_READ=1`, `TB_SIM_DEVICE_ID` และ `TB_PUBLIC_SIM_ID` ใน **Settings → Environment Variables → Production** สำหรับ Device จำลองที่อนุญาตให้ดูได้ และเว้น `TB_REAL_DEVICE_ID` กับ `TB_API_KEY` ไว้สำหรับ deployment สาธารณะของโครงงานนี้ เก็บ Device Access Token สำหรับการส่งข้อมูลไว้ฝั่ง PowerShell เท่านั้น การแก้ Environment Variables มีผลเมื่อ Deploy ครั้งถัดไป [Vercel Environment Variables](https://vercel.com/docs/environment-variables)
+3. เมื่อได้รับอนุญาตให้ Deploy ให้เข้าโฟลเดอร์ `app/` ใช้ `npx vercel@latest login` และตรวจว่าลิงก์กับโปรเจกต์ `esp32s3-water-level-monitor` ก่อนใช้ `npx vercel@latest deploy --prod` หากใช้การเชื่อม GitHub ให้ตรวจ Production Branch ก่อน Push เพราะ Vercel สามารถ Deploy อัตโนมัติจากสาขาที่ตั้งไว้ได้ [คู่มือ Vercel CLI](https://vercel.com/docs/projects/deploy-from-cli)
+4. เปิด Production Domain แบบไม่ลงชื่อเข้าใช้ ตรวจหน้า DEMO และเลือก **SIM · ESP32-S3-Water-Level-SIM** ทดสอบ `/api/telemetry?op=devices` ว่าคืน `cloud-sim` และตรวจ `/#history` ว่าแสดงกราฟและส่งออก CSV จาก Build ที่เพิ่ง Deploy ได้
 
 ## การทดสอบ
 
-`npm test` ตรวจการคาลิเบรต ค่าผิดปกติ เกณฑ์แจ้งเตือน สูตรแบตเตอรี่ ขอบเขตของ Proxy และกรณี API ตอบผิดพลาด ทดสอบ API ที่เชื่อม Cloud แล้วอ่าน Device SIM ได้จริง โดยอ่านระยะล่าสุด 35 cm, สถานะ DANGER, Device Activity เป็น false และประวัติ 6 จุดในช่วง 24 ชม. ณ เวลาเก็บผล
+แต่ละหน้าเปิดจากลิงก์ตรงได้ เช่น `/#history` หรือ `/#alerts` และใช้ปุ่มย้อนกลับของเบราว์เซอร์ได้ ในหน้าประวัติ **ส่งออก CSV** จะบันทึกจุดที่โหลดในช่วงที่เลือก เวลาเป็น UTC และแต่ละแถวระบุแหล่งที่มาว่า `DEMO`, `SIMULATED` หรือ `LIVE` เกณฑ์ใน CSV มาจากการตั้งค่าที่ใช้แสดงกราฟ หากการอ่านประวัติล้มเหลว เว็บจะกำกับข้อมูลจากการอ่านครั้งก่อนและมีปุ่ม **ลองใหม่**
+
+โค้ดหน้าจออยู่ใน `src/pages` ส่วนองค์ประกอบที่ใช้ซ้ำอยู่ใน `src/components` การนำทางและการดึงข้อมูลเป็นระยะแยกอยู่ใน `src/hooks` ส่วนการแปลข้อผิดพลาด API และสร้าง CSV อยู่ใน `src/lib` แนวทางแยกหน้าจอ การจัดการข้อผิดพลาด และส่งออกประวัติอ้างอิงจาก [AIR-AutoAC-Web](https://github.com/puwitpenkhetkorn/AIR-AutoAC-Web/tree/211d7f0f999a2ea40dcfb6e38c0f290aef0a92de/src) การอ่าน ThingsBoard ยังคงผ่าน API ฝั่งเซิร์ฟเวอร์ของโปรเจกต์
+
+`npm test` ตรวจการคาลิเบรต ค่าผิดปกติ เกณฑ์แจ้งเตือน สูตรแบตเตอรี่ ขอบเขตของ Proxy และกรณี API ตอบผิดพลาด
+
+ผลทดสอบกับ Device SIM เมื่อ 20 พฤศจิกายน 2026 สคริปต์ส่งผ่าน HTTPS สำเร็จ 31 จุดต่อรอบ ThingsBoard บันทึกครบทั้งหกคีย์และเว็บ Vercel อ่าน History ได้ครบ 31 จุด Alerts แสดง WARNING ที่ 70% และ DANGER ที่ 85% เว็บแสดง Offline หลังหยุดส่งเกิน 60 วินาทีแล้วกลับ Online หลังส่ง Telemetry ใหม่
 
 ทดสอบเมนูมือถือที่ความกว้าง 320 px ตรวจว่ารายการเมนูทั้งห้าเปิดได้โดยไม่ล้นหน้าจอ ตรวจการปฏิเสธค่า threshold ผิดและการอ่านค่าที่บันทึกหลัง Reload ส่วนการทดสอบบน ESP32-S3 ต้องใช้ PCB เฟิร์มแวร์และสิทธิ์อ่าน Device จริง

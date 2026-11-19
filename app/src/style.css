@@ -28,3 +28,9 @@ main{max-width:1530px;margin:0 auto;padding:28px clamp(18px,3vw,42px) 20px;min-w
   .top-actions{display:grid;grid-template-columns:auto minmax(0,1fr)}
   .top-actions .source-picker select{max-width:none}
 }
+
+.nav-item { text-decoration: none; }
+.request-error { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.request-error > p { margin: 0; }
+.history-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+.history-actions button:disabled { opacity: .55; cursor: not-allowed; }
