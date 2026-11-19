@@ -2,6 +2,8 @@
 
 เว็บแอปภาษาไทยสำหรับแสดงระดับน้ำและแจ้งเตือนบนหน้าเว็บ ใช้ React, Vite, Chart.js, Lucide และ Vercel Functions โดยใช้ ThingsBoard Cloud เก็บ Telemetry และ Device Attributes
 
+[เปิด Web App บน Vercel](https://esp32s3-water-level-monitor.vercel.app/) แล้วเลือก **SIM · ESP32-S3-Water-Level-SIM** เพื่อดูข้อมูลจำลองที่บันทึกไว้ใน ThingsBoard Cloud
+
 | แหล่งข้อมูล | การทำงาน |
 | --- | --- |
 | **DEMO** | ตัวจำลองในเบราว์เซอร์ เพิ่มและลดระดับน้ำผ่านทั้งสามสถานะ มีพัก เล่น และ Reset Demo |
