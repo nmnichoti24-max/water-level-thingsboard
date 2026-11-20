@@ -1,4 +1,4 @@
-const SOURCES = { demo: 'DEMO', 'cloud-sim': 'SIMULATED', esp32: 'LIVE' }
+const SOURCES = { 'cloud-sim': 'SIMULATED', esp32: 'LIVE' }
 const STATES = ['NORMAL', 'WARNING', 'DANGER', 'SENSOR_ERROR']
 const numberCell = (value) => Number.isFinite(value) ? value : ''
 

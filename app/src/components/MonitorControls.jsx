@@ -9,9 +9,7 @@ export function Source({ value, devices, change }) {
   return <label className="source-picker">
     <span className="visually-hidden">เลือกแหล่งข้อมูล</span>
     <select value={value} onChange={(event) => change(event.target.value)}>
-      <option value="demo">DEMO · จำลองในเว็บ</option>
       {devices.map(({ key, name, simulated }) => <option key={key} value={key}>{simulated ? 'SIM · ' : 'LIVE · '}{name}</option>)}
-      {value !== 'demo' && !devices.some(({ key }) => key === value) && <option value={value}>แหล่งข้อมูลที่บันทึกไว้</option>}
     </select>
   </label>
 }

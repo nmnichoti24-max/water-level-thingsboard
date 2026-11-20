@@ -112,7 +112,6 @@
 .auth-submit.primary { min-height: 46px; margin: 0; background: linear-gradient(110deg, #a1f3fb, #55d4ee); color: #062237; border-color: #91edf9; box-shadow: 0 8px 22px #34c0df30; }
 .auth-submit.primary:hover { background: #b3f7fd; }
 .auth-sheet .auth-submit { width: 100%; }
-.auth-demo { width: 100%; min-height: 44px; margin-top: 13px; }
 .auth-sheet button:disabled { opacity: .6; cursor: wait; }
 
 .app-shell { background: radial-gradient(ellipse at 80% 0%, #0e2641 0%, transparent 48%), var(--guard-bg); }
@@ -183,5 +182,4 @@
   .auth-layout *, .app-shell * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
 .auth-registration-links { margin-top: 14px; }
-.auth-demo-link { display: flex; align-items: center; justify-content: center; text-decoration: none; }
 .auth-field small { color: #b8c9dc; font-weight: 400; }

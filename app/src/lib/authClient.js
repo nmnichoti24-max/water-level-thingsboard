@@ -1,7 +1,7 @@
 import { apiAccess, apiUrl } from './apiTarget'
 
 const MESSAGES = {
-  AUTH_NOT_CONFIGURED: 'ระบบบัญชียังไม่ได้ตั้งค่า สามารถเปิด DEMO ในเบราว์เซอร์ได้',
+  AUTH_NOT_CONFIGURED: 'ระบบบัญชียังไม่ได้ตั้งค่า',
   AUTH_USERNAME_INVALID: 'Username ต้องมี 3–32 ตัว ใช้ a–z, 0–9, จุด ขีดกลาง หรือขีดล่าง',
   AUTH_USERNAME_PASSWORD: 'ใช้รหัสผ่านอย่างน้อย 12 ตัวอักษร และไม่เกิน 256 ไบต์',
   AUTH_USERNAME_TAKEN: 'Username นี้ถูกใช้แล้ว กรุณาเลือกชื่ออื่น',

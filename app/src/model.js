@@ -4,7 +4,6 @@ export const DEFAULT_SETTINGS = {
   warning: 70, danger: 85, refreshSeconds: 10, staleSeconds: 60,
 }
 export const CLOUD_SIM_SETTINGS = { ...DEFAULT_SETTINGS, sensorOffset: 30 }
-export const SCENARIO = [38, 47, 55, 65, 72, 80, 88, 95, 91, 82, 74, 62, 46, 33, 27, 36, 52, 59]
 export const formatNumber = (value, digits = 1) => Number.isFinite(value)
   ? new Intl.NumberFormat('th-TH', { maximumFractionDigits: digits }).format(value) : '—'
 export const formatDate = (value) => value
@@ -35,12 +34,6 @@ export function measure(sample, settings) {
   const percent = Math.round((level / tankHeight) * 10000) / 100
   const state = percent >= danger ? 'DANGER' : percent >= warning ? 'WARNING' : 'NORMAL'
   return { state, level, percent, distance, ts }
-}
-
-export function simulate(percent, ts, settings) {
-  return {
-    ts, distance: settings.sensorOffset + settings.tankHeight * (1 - percent / 100), sensorValid: true,
-  }
 }
 
 export function summarize(points) {
@@ -80,7 +73,7 @@ export function estimateRuntime({ capacity, voltage, efficiency, current }) {
 }
 
 const STORAGE_KEY = 'water-monitor-prefs-v1'
-const SOURCES = { demo: CLOUD_SIM_SETTINGS, esp32: DEFAULT_SETTINGS, 'cloud-sim': CLOUD_SIM_SETTINGS }
+const SOURCES = { esp32: DEFAULT_SETTINGS, 'cloud-sim': CLOUD_SIM_SETTINGS }
 
 export function loadPreferences(scope) {
   let data
@@ -90,11 +83,12 @@ export function loadPreferences(scope) {
   } catch {
     data = {}
   }
+  data ??= {}
   const profiles = Object.fromEntries(Object.entries(SOURCES).map(([source, defaults]) => {
     const profile = { ...defaults, ...data.profiles?.[source] }
     return [source, validateSettings(profile) ? defaults : profile]
   }))
-  return { source: Object.hasOwn(SOURCES, data.source) ? data.source : 'demo', profiles }
+  return { source: Object.hasOwn(SOURCES, data.source) ? data.source : '', profiles }
 }
 
 export function savePreferences(prefs, scope) {

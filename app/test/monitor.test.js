@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { makeApi } from '../server/telemetry.js'
-import { alertHistory, CLOUD_SIM_SETTINGS, DEFAULT_SETTINGS, estimateRuntime, measure, SCENARIO, simulate, summarize, validateSettings } from '../src/model.js'
+import { alertHistory, CLOUD_SIM_SETTINGS, DEFAULT_SETTINGS, estimateRuntime, measure, summarize, validateSettings } from '../src/model.js'
 
 const deviceId = '11111111-1111-4111-8111-111111111111'
 const now = 1_800_000_000_000
@@ -28,7 +28,7 @@ test('missing, invalid, timeout and out-of-range readings do not look valid', ()
 })
 
 test('the simulation covers each threshold and event history omits repeats', () => {
-  const points = SCENARIO.map((percent, idx) => measure(simulate(percent, idx + 1, CLOUD_SIM_SETTINGS), CLOUD_SIM_SETTINGS))
+  const points = [38, 47, 55, 65, 72, 80, 88, 95, 91, 82, 74, 62, 46, 33, 27, 36, 52, 59].map((percent, idx) => measure({distance: 130 - percent, ts: idx + 1, sensorValid: true}, CLOUD_SIM_SETTINGS))
   assert.deepEqual(new Set(points.map(({ state }) => state)), new Set(['NORMAL', 'WARNING', 'DANGER']))
   assert.deepEqual(alertHistory(points).map(({ state }) => state), ['WARNING', 'DANGER', 'WARNING'])
   assert.equal(summarize(points).high, 95)

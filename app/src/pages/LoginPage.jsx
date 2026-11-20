@@ -4,7 +4,7 @@ import AuthLayout from '../components/AuthLayout'
 import { confirmationPage, routeHash } from '../lib/routes'
 import { authRequest, loginAvailability } from '../lib/authClient'
 
-export default function LoginPage({ loading, message, onLogin, onDemo, onExternal, confirmed, startScreen = 'login', initialLegacy = false }) {
+export default function LoginPage({ loading, message, onLogin, onExternal, confirmed, startScreen = 'login', initialLegacy = false }) {
   const [availability, setAvailability] = useState(null)
   const checkBroker = Boolean(onExternal)
 
@@ -86,9 +86,9 @@ export default function LoginPage({ loading, message, onLogin, onDemo, onExterna
           {feedback && <p role="status" className="notice success">{feedback}</p>}
           {onExternal ? <>
             {!availability && <p role="status" className="notice">กำลังตรวจระบบบัญชี…</p>}
-            {availability && !availability.username && !availability.legacy && <p role="status" className="notice">ระบบเข้าสู่ระบบยังไม่พร้อม สามารถเปิด DEMO ได้</p>}
+            {availability && !availability.username && !availability.legacy && <p role="status" className="notice">ระบบเข้าสู่ระบบยังไม่พร้อม</p>}
             <button type="button" className="primary auth-submit" disabled={busy || !availability?.username} onClick={() => openExternal('login')}>
-              <LockKeyhole size={16} aria-hidden="true" /> {busy ? 'กำลังเปิดหน้าล็อกอิน…' : 'เข้าสู่ระบบผ่าน WaterGuard Pro'}
+              <LockKeyhole size={16} aria-hidden="true" /> {busy ? 'กำลังเปิดหน้าล็อกอิน…' : 'เข้าสู่ระบบด้วย Username'}
             </button>
             <div className="auth-options"><button type="button" className="auth-link" disabled={busy || !availability?.legacy} onClick={() => openExternal('legacy')}>เข้าสู่ระบบด้วยบัญชีอีเมลเดิม</button></div>
           </> : <form onSubmit={submit} aria-busy={busy}>
@@ -124,7 +124,6 @@ export default function LoginPage({ loading, message, onLogin, onDemo, onExterna
             </button>}
             {legacy && !onExternal && <a className="auth-link" href={confirmationPage(false)}>ยืนยันอีเมลบัญชีเดิม</a>}
           </div>}
-          {login && onDemo && <button type="button" className="button-outline auth-demo" disabled={busy} onClick={onDemo}>เปิด DEMO ในเบราว์เซอร์</button>}
         </>}
   </AuthLayout>
 }

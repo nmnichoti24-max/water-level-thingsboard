@@ -8,7 +8,7 @@
 
 ## GitHub Pages และการส่งต่อการเข้าสู่ระบบผ่าน Vercel
 
-URL เป้าหมายคือ [WaterGuard Pro บน GitHub Pages](https://nmnichoti24-max.github.io/water-level-thingsboard/#/login) หน้า Login พาผู้ใช้ไปเปิด Vercel แบบเต็มหน้าเพื่อกรอกรหัสผ่านหรือกู้บัญชี Pages ใช้ `#/dashboard`, `#/history`, `#/alerts`, `#/settings`, `#/battery` และอ่านลิงก์รูปแบบเดิมได้ สำหรับ Direct URL แบบ DEMO ให้เติม `?demo=1` ต่อท้าย hash เช่น `/#/history?demo=1` DEMO ใช้ข้อมูลในเบราว์เซอร์และไม่เรียก API
+URL เป้าหมายคือ [WaterGuard Pro บน GitHub Pages](https://nmnichoti24-max.github.io/water-level-thingsboard/#/login) หน้า Login พาผู้ใช้ไปเปิด Vercel แบบเต็มหน้าเพื่อกรอกรหัสผ่านหรือกู้บัญชี Pages ใช้ `#/dashboard`, `#/history`, `#/alerts`, `#/settings`, `#/battery` และอ่านลิงก์รูปแบบเดิมได้ ลิงก์ตรงไปยังหน้าตรวจวัดจะขอให้เข้าสู่ระบบก่อน
 
 Vercel ใช้คุกกี้ first-party แบบ HttpOnly, SameSite=Strict และ Secure บน HTTPS เมื่อเปิดส่วน GitHub Pages แล้ว คุกกี้ของ Vercel มีเพียงรหัสเซสชันอ้างอิงแบบสุ่ม ส่วน Supabase access/refresh token เก็บเข้ารหัสใน Redis Vercel ส่ง code อายุ 60 วินาทีกลับเฉพาะ callback ที่กำหนด Pages ตรวจ state และแลก code ด้วย PKCE S256 Redis ใช้ Lua เปรียบเทียบและลบ code ในคำสั่งเดียว API รับ Bearer ของ WaterGuard Pro อายุสูงสุด 5 นาทีและตรวจว่าเซสชันยังอยู่ใน Redis ทุกครั้ง Pages เก็บ Bearer ในหน่วยความจำ ส่วน sessionStorage ใช้เก็บ state และตัวตรวจ PKCE ชั่วคราวกับเครื่องหมายสำหรับกลับเข้าเซสชันหลังรีโหลด ไม่มี Supabase token หรือ Bearer ใน Web Storage
 
@@ -24,11 +24,11 @@ Vercel ใช้คุกกี้ first-party แบบ HttpOnly, SameSite=Stri
 
 ทดสอบที่สองพอร์ตใน Windows ตั้งใน `app/.env.local` ชั่วคราวให้ `APP_ORIGIN=http://127.0.0.1:4177` และ `AUTH_PAGES_REDIRECT_URL=http://127.0.0.1:4180/water-level-thingsboard/` ใช้ `npm run dev -- --port 4177` สำหรับหน้าล็อกอินและ API ใส่ `VITE_API_BASE_URL=http://127.0.0.1:4177` ใน `app/.env.local` ด้วย จากนั้นเปิด PowerShell อีกหน้าต่างที่โฟลเดอร์ `app` และรัน `npm run dev -- --mode pages --port 4180` เปิด `http://127.0.0.1:4180/water-level-thingsboard/#/history` ทดสอบรหัสผ่านจริงและ OTP จริง จากนั้นตรวจ Refresh, Logout, รูปแบบ Origin ใน Network และการปฏิเสธ Telemetry หลัง Logout พอร์ตทดสอบใช้ loopback เดียวกัน เมื่อมีสภาพแวดล้อมเผยแพร่ที่ได้รับอนุญาตจึงต้องทดสอบเพิ่มบนสองโดเมนจริงและเปิดบล็อก third-party cookies
 
-ใน GitHub Pages หน้า Login จะตรวจสถานะของ Vercel ก่อนเปิด Login Bridge และหน้า Register จะปิดการส่งฟอร์มเมื่อ API หรือฐานบัญชียังไม่พร้อม ผู้ใช้เข้า DEMO ได้จากลิงก์ในหน้า Login หรือเปิด [Dashboard DEMO](https://nmnichoti24-max.github.io/water-level-thingsboard/#/dashboard?demo=1) โดยตรง
+ใน GitHub Pages หน้า Login จะตรวจสถานะของ Vercel ก่อนเปิด Login Bridge และหน้า Register จะปิดการส่งฟอร์มเมื่อ API หรือฐานบัญชียังไม่พร้อม
 
 ## บัญชี Username
 
-หน้า `#/register` ใช้ Username, รหัสผ่าน และยืนยันรหัสผ่าน ระบบบัญชี Username ไม่ต้องใช้ SMTP, OTP หรืออีเมล ผู้ใช้บัญชีเดิมเลือก **เข้าสู่ระบบด้วยบัญชีอีเมลเดิม** เพื่อใช้ Supabase Auth ต่อได้ บัญชี Username จะเริ่มด้วย DEMO เท่านั้น รหัสผ่านถูกแฮชฝั่งเซิร์ฟเวอร์ด้วย Argon2id (32 MiB, 3 รอบ, 1 thread, salt สุ่ม) PostgreSQL เก็บเฉพาะ hash และข้อมูลบัญชี Redis เก็บเซสชันอายุจำกัด, code PKCE, ตัวนับ และสิทธิ์แยกตามบัญชี
+หน้า `#/register` ใช้ Username, รหัสผ่าน และยืนยันรหัสผ่าน ระบบบัญชี Username ไม่ต้องใช้ SMTP, OTP หรืออีเมล ผู้ใช้บัญชีเดิมเลือก **เข้าสู่ระบบด้วยบัญชีอีเมลเดิม** เพื่อใช้ Supabase Auth ต่อได้ บัญชี Username ใหม่เข้าเมนูของแอปได้หลังเข้าสู่ระบบ แต่ต้องให้ผู้ดูแลอนุญาตแยกก่อนอ่าน SIM หรือ LIVE รหัสผ่านถูกแฮชฝั่งเซิร์ฟเวอร์ด้วย Argon2id (32 MiB, 3 รอบ, 1 thread, salt สุ่ม) PostgreSQL เก็บเฉพาะ hash และข้อมูลบัญชี Redis เก็บเซสชันอายุจำกัด, code PKCE, ตัวนับ และสิทธิ์แยกตามบัญชี
 
 ### ตั้งค่า PostgreSQL ใน Supabase
 
@@ -94,11 +94,11 @@ Brevo Free รองรับอีเมล Transactional 300 ฉบับต�
 
 ## สิทธิ์ ThingsBoard
 
-| สถานะ | DEMO | SIM | LIVE |
+| สถานะ | เข้าเมนูหลังเข้าสู่ระบบ | SIM | LIVE |
 | --- | --- | --- | --- |
-| GUEST | ได้ | — | — |
-| UNVERIFIED | ได้ | — | — |
-| VERIFIED_USER | ได้ | — | — |
+| GUEST | — | — | — |
+| UNVERIFIED | — | — | — |
+| SIGNED_IN ผู้ใช้ที่ยังไม่มี ACL | ได้ | — | — |
 | SIM_VIEWER | ได้ | ได้ | — |
 | LIVE_VIEWER | ได้ | เฉพาะเมื่อให้ SIM แยก | เฉพาะ UUID ของ Device ที่อนุญาต |
 | ADMIN ผู้ดูแล Upstash | ได้ | ตาม ACL ของบัญชีแอป | ตาม ACL ของบัญชีแอป |
@@ -125,27 +125,24 @@ ThingsBoard Dashboard เดิมยังเปิดสาธารณะ ก
 
 | แหล่งข้อมูล | การทำงาน |
 | --- | --- |
-| **DEMO** | ตัวจำลองในเบราว์เซอร์ เพิ่มและลดระดับน้ำผ่านทั้งสามสถานะ มีพัก เล่น และ Reset Demo |
 | **SIM · ThingsBoard** | อ่าน Telemetry ที่มีอยู่ใน Device `ESP32-S3-Water-Level-SIM` ผ่าน API จริง ติดป้าย **SIMULATED DATA** |
 | **LIVE · ESP32** | อ่าน Device `ESP32-S3-Water-Level` ที่เซิร์ฟเวอร์กำหนดไว้ และแสดงป้าย **LIVE DATA** เมื่อเลือกแหล่งนี้ |
 
-![หน้าภาพรวม Demo จากการเปิดเว็บจริง](screenshots/demo-desktop.jpg)
-
-[ภาพหน้าจอมือถือ](screenshots/demo-mobile.jpg) · [เมนูมือถือเมื่อเปิด](screenshots/mobile-menu.jpg) · [ภาพขณะอ่าน SIM จาก ThingsBoard](screenshots/cloud-sim-desktop.jpg)
+[ภาพขณะอ่าน SIM จาก ThingsBoard](screenshots/cloud-sim-desktop.jpg)
 
 โปรเจกต์นี้อยู่ใน Repository เดิม โฟลเดอร์ `app/` แยกการ build และ deploy จากไฟล์ Export ใน `dashboard/` และจากหน้า ThingsBoard ที่ใช้อยู่ [Public ThingsBoard Dashboard เดิม](https://thingsboard.cloud/dashboard/6a182b80-e40e-11f1-b8a1-9db681a717b8?publicId=a5b263d0-e40f-11f1-b50d-0302f5370387)
 
 ## เปิดใช้งานบน Windows
 
 1. ติดตั้ง Node.js 22.12 ขึ้นไปในสาย 22.x จากนั้นเปิด PowerShell ในโฟลเดอร์ `app/`
-2. ติดตั้ง dependency แล้วเปิดเว็บ เครื่องที่เพิ่งติดตั้งสามารถเริ่มด้วย DEMO ได้ทันที
+2. ติดตั้ง dependency แล้วเปิดเว็บ
 
    ```powershell
    npm ci
    npm run dev -- --port 4175
    ```
 
-3. เปิด `http://127.0.0.1:4175/` และเลือก **เปิด DEMO ในเบราว์เซอร์** หรือเข้าสู่ระบบหลังตั้งค่า Auth แล้ว ไปที่ **ตั้งค่า** เพื่อเปลี่ยนการคาลิเบรต เกณฑ์แจ้งเตือน หรือช่วงเวลา Offline
+3. เปิด `http://127.0.0.1:4175/` และเข้าสู่ระบบหลังตั้งค่า Auth ไปที่ **ตั้งค่า** เพื่อเปลี่ยนการคาลิเบรต เกณฑ์แจ้งเตือน หรือช่วงเวลา Offline
 4. รัน `npm test` เพื่อตรวจการคำนวณและพฤติกรรม API และ `npm run build` เพื่อสร้างไฟล์สำหรับ deploy
 
 ## เปิดการอ่าน ThingsBoard Cloud
@@ -242,11 +239,11 @@ ThingsBoard Dashboard เดิมยังเปิดสาธารณะ ก
 1. โปรเจกต์ Vercel ที่ใช้อยู่สร้างด้วย CLI จากโฟลเดอร์ `app/` จึงแสดง Root Directory เป็น `.` หากนำเข้าจาก GitHub ทั้ง Repository ให้ตั้ง **Root Directory** เป็น `app` เลือก **Vite** และใช้ Node.js 22.x ตาม `engines.node` ใน `app/package.json` Vercel จะ build ไปยัง `dist/` และใช้ `api/telemetry.js` เป็น Function [Vite บน Vercel](https://vercel.com/docs/frameworks/frontend/vite) · [Node.js บน Vercel](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions)
 2. ใช้แผน **Hobby** สำหรับการสาธิต ตั้ง `TB_ORIGIN`, `TB_ENABLE_CLOUD_READ=1`, `TB_SIM_DEVICE_ID` และ `TB_PUBLIC_SIM_ID` ใน **Settings → Environment Variables → Production** สำหรับ Device จำลองที่อนุญาตให้ดูได้ และเว้น `TB_REAL_DEVICE_ID` กับ `TB_API_KEY` ไว้สำหรับ deployment สาธารณะของโครงงานนี้ เก็บ Device Access Token สำหรับการส่งข้อมูลไว้ฝั่ง PowerShell เท่านั้น การแก้ Environment Variables มีผลเมื่อ Deploy ครั้งถัดไป [Vercel Environment Variables](https://vercel.com/docs/environment-variables)
 3. เมื่อได้รับอนุญาตให้ Deploy ให้เข้าโฟลเดอร์ `app/` ใช้ `npx vercel@latest login` และตรวจว่าลิงก์กับโปรเจกต์ `esp32s3-water-level-monitor` ก่อนใช้ `npx vercel@latest deploy --prod` หากใช้การเชื่อม GitHub ให้ตรวจ Production Branch ก่อน Push เพราะ Vercel สามารถ Deploy อัตโนมัติจากสาขาที่ตั้งไว้ได้ [คู่มือ Vercel CLI](https://vercel.com/docs/projects/deploy-from-cli)
-4. เปิด Production Domain แบบไม่ลงชื่อเข้าใช้ ตรวจหน้า DEMO และเลือก **SIM · ESP32-S3-Water-Level-SIM** ทดสอบ `/api/telemetry?op=devices` ว่าคืน `cloud-sim` และตรวจ `/#history` ว่าแสดงกราฟและส่งออก CSV จาก Build ที่เพิ่ง Deploy ได้
+4. เปิด Production Domain และตรวจว่าเข้าหน้าหลักต้องลงชื่อเข้าใช้ จากนั้นใช้บัญชีที่ได้รับสิทธิ์และเลือก **SIM · ESP32-S3-Water-Level-SIM** ทดสอบ `/api/telemetry?op=devices` ว่าคืน `cloud-sim` และตรวจ `/#history` ว่าแสดงกราฟและส่งออก CSV จาก Build ที่เพิ่ง Deploy ได้
 
 ## การทดสอบ
 
-แต่ละหน้าเปิดจากลิงก์ตรงได้ เช่น `/#history` หรือ `/#alerts` และใช้ปุ่มย้อนกลับของเบราว์เซอร์ได้ ในหน้าประวัติ **ส่งออก CSV** จะบันทึกจุดที่โหลดในช่วงที่เลือก เวลาเป็น UTC และแต่ละแถวระบุแหล่งที่มาว่า `DEMO`, `SIMULATED` หรือ `LIVE` เกณฑ์ใน CSV มาจากการตั้งค่าที่ใช้แสดงกราฟ หากการอ่านประวัติล้มเหลว เว็บจะกำกับข้อมูลจากการอ่านครั้งก่อนและมีปุ่ม **ลองใหม่**
+แต่ละหน้าเปิดจากลิงก์ตรงได้ เช่น `/#history` หรือ `/#alerts` และใช้ปุ่มย้อนกลับของเบราว์เซอร์ได้ ในหน้าประวัติ **ส่งออก CSV** จะบันทึกจุดที่โหลดในช่วงที่เลือก เวลาเป็น UTC และแต่ละแถวระบุแหล่งที่มาว่า `SIMULATED` หรือ `LIVE` เกณฑ์ใน CSV มาจากการตั้งค่าที่ใช้แสดงกราฟ หากการอ่านประวัติล้มเหลว เว็บจะกำกับข้อมูลจากการอ่านครั้งก่อนและมีปุ่ม **ลองใหม่**
 
 โค้ดหน้าจออยู่ใน `src/pages` ส่วนองค์ประกอบที่ใช้ซ้ำอยู่ใน `src/components` การนำทางและการดึงข้อมูลเป็นระยะแยกอยู่ใน `src/hooks` ส่วนการแปลข้อผิดพลาด API และสร้าง CSV อยู่ใน `src/lib` แนวทางแยกหน้าจอ การจัดการข้อผิดพลาด และส่งออกประวัติอ้างอิงจาก [AIR-AutoAC-Web](https://github.com/puwitpenkhetkorn/AIR-AutoAC-Web/tree/211d7f0f999a2ea40dcfb6e38c0f290aef0a92de/src) การอ่าน ThingsBoard ยังคงผ่าน API ฝั่งเซิร์ฟเวอร์ของโปรเจกต์
 

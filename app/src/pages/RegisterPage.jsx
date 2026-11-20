@@ -109,6 +109,5 @@ export default function RegisterPage({ verify }) {
     <div className="auth-options auth-registration-links">
       <a className="auth-link" href={routeHash('login')}>มีบัญชีอยู่แล้ว? เข้าสู่ระบบ</a>
     </div>
-    <a className="button-outline auth-demo auth-demo-link" href={routeHash('dashboard', true)}>เปิด DEMO ในเบราว์เซอร์</a>
   </AuthLayout>
 }

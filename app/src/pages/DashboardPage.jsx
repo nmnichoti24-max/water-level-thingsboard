@@ -30,7 +30,7 @@ function Metric({ icon: Icon, label, value, unit, note, color = 'cyan' }) {
   return <section className="panel metric"><span className={'tile-icon ' + color}><Icon size={19} /></span><div><p>{label}</p><strong>{value}{unit && <small> {unit}</small>}</strong>{note && <em>{note}</em>}</div></section>
 }
 
-export default function DashboardPage({ monitor, settings, range, setRange, isDemo, isSimulated }) {
+export default function DashboardPage({ monitor, settings, range, setRange, isSimulated }) {
   const { reading } = monitor
   const offline = monitor.online === false
   const stale = offline || Boolean(monitor.latestError)
@@ -52,9 +52,9 @@ export default function DashboardPage({ monitor, settings, range, setRange, isDe
         <Metric icon={Gauge} label="ระดับน้ำในถัง" value={formatNumber(reading.percent)} unit="%" note={notes} />
         <Metric icon={Ruler} label="ระยะถึงผิวน้ำ" value={formatNumber(reading.distance)} unit="cm" note={notes} />
         <Metric icon={Radio} label="ความสดใหม่ของข้อมูล" value={latestLabel} color={monitor.online && !stale ? 'green' : 'amber'} note={monitor.ageSeconds === null ? '' : formatNumber(monitor.ageSeconds, 0) + ' วินาทีก่อน'} />
-        <section className="panel activity-card"><div><span>รับข้อมูลล่าสุด</span><strong>{formatDate(reading.ts)}</strong></div><div><span>Device Activity</span><strong>{isDemo ? 'จำลองในเว็บ' : monitor.activity === true ? 'ACTIVE' : monitor.activity === false ? 'INACTIVE' : 'ไม่ทราบ'}</strong>{monitor.lastActivity && <small>{formatDate(monitor.lastActivity)}</small>}</div></section>
+        <section className="panel activity-card"><div><span>รับข้อมูลล่าสุด</span><strong>{formatDate(reading.ts)}</strong></div><div><span>Device Activity</span><strong>{monitor.activity === true ? 'ACTIVE' : monitor.activity === false ? 'INACTIVE' : 'ไม่ทราบ'}</strong>{monitor.lastActivity && <small>{formatDate(monitor.lastActivity)}</small>}</div></section>
       </div>
     </div>
-    <div className="overview-bottom"><HistoryPage {...shared} simulated={isSimulated} /><AlertsPage {...shared} isDemo={isSimulated} recent /></div>
+    <div className="overview-bottom"><HistoryPage {...shared} simulated={isSimulated} /><AlertsPage {...shared} simulated={isSimulated} recent /></div>
   </>
 }

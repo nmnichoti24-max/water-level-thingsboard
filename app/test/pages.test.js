@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { authorizeTelemetry, makeAuth, respondAuth } from '../server/auth.js'
 import { bridgeConfig, opaque, sha256 } from '../server/bridgeStore.js'
 import { respond } from '../server/telemetry.js'
-import { isDemoHash, MONITOR_ROUTES, routeFromHash, routeHash } from '../src/lib/routes.js'
+import { MONITOR_ROUTES, routeFromHash, routeHash } from '../src/lib/routes.js'
 
 const env = {
   APP_ORIGIN: 'https://waterguard.example.test',
@@ -71,13 +71,13 @@ async function challenge(app) {
   return { cookie, input: { code: callback.searchParams.get('wg_code'), state, verifier } }
 }
 
-test('canonical and legacy hashes map to all five pages and keep DEMO explicit', () => {
+test('canonical and legacy hashes map to all five pages', () => {
   for (const route of [...MONITOR_ROUTES, 'login', 'register', 'confirm-email']) {
     assert.equal(routeFromHash('#' + route), route)
     assert.equal(routeFromHash(routeHash(route)), route)
   }
-  assert.equal(isDemoHash(routeHash('history', true)), true)
-  assert.equal(isDemoHash('#/login?demo=1'), false)
+  assert.equal(routeFromHash('#/history?demo=1'), 'history')
+  assert.equal(routeHash('history'), '#/history')
   assert.equal(routeFromHash('#//evil.test'), '')
 })
 
