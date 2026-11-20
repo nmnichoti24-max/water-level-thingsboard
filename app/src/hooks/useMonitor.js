@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RANGES, SCENARIO, alertHistory, measure, simulate } from '../model'
 import { readTelemetry } from '../lib/telemetryClient'
 
-export function useDevices() {
+export function useDevices(enabled = true) {
   const [state, setState] = useState({ devices: [], loading: true, error: '' })
   const [attempt, setAttempt] = useState(0)
   function retry() {
@@ -10,6 +10,7 @@ export function useDevices() {
     setAttempt((value) => value + 1)
   }
   useEffect(() => {
+    if (!enabled) return
     const task = new AbortController()
     readTelemetry('devices', { signal: task.signal })
       .then(({ devices }) => {
@@ -19,8 +20,8 @@ export function useDevices() {
         if (!task.signal.aborted) setState((previous) => ({ ...previous, loading: false, error: error.message }))
       })
     return () => task.abort()
-  }, [attempt])
-  return { ...state, retry }
+  }, [attempt, enabled])
+  return enabled ? { ...state, retry } : { devices: [], loading: false, error: '', retry }
 }
 
 function demoSeed() {

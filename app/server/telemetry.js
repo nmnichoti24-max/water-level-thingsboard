@@ -1,3 +1,6 @@
+import { authConfig, authorizeTelemetry, sendJson } from './auth.js'
+import { pagesCors } from './bridgeStore.js'
+
 const ORIGINS = new Set(['https://thingsboard.cloud', 'https://eu.thingsboard.cloud'])
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 export const WINDOWS = { '1h': 3600000, '6h': 21600000, '24h': 86400000, '7d': 604800000 }
@@ -28,7 +31,7 @@ function boolean(value) {
 function devices(env) {
   if (env.TB_ENABLE_CLOUD_READ !== '1' || !ORIGINS.has(env.TB_ORIGIN)) return []
   return [
-    { key: 'esp32', name: 'ESP32-S3-Water-Level', simulated: false, id: env.TB_REAL_DEVICE_ID, enabled: Boolean(env.TB_API_KEY) },
+    { key: 'esp32', name: 'ESP32-S3-Water-Level', simulated: false, id: env.TB_REAL_DEVICE_ID, enabled: env.TB_ENABLE_LIVE_READ === '1' && Boolean(env.TB_API_KEY) },
     { key: 'cloud-sim', name: 'ESP32-S3-Water-Level-SIM', simulated: true, id: env.TB_SIM_DEVICE_ID, enabled: Boolean(env.TB_API_KEY) || UUID.test(env.TB_PUBLIC_SIM_ID ?? '') },
   ].filter((entry) => entry.enabled && UUID.test(entry.id ?? ''))
 }
@@ -86,19 +89,22 @@ function ordered(body, key) {
     Number.isSafeInteger(point?.ts) && point.ts > 0 && point.value !== null && point.value !== undefined) : []
 }
 
-export function makeApi(env, fetcher = fetch, now = Date.now) {
+export function makeApi(env, fetcher = fetch, now = Date.now, { canSim = false, liveDevices = new Set() } = {}) {
   return async (url, method = 'GET') => {
     try {
       if (method !== 'GET') throw new ApiError(405, 'METHOD_NOT_ALLOWED')
       const operation = url.searchParams.get('op') ?? 'devices'
-      const available = devices(env)
+      const configured = devices(env)
+      const available = configured.filter((entry) => entry.simulated ? canSim : liveDevices.has(entry.id.toLowerCase()))
       if (operation === 'devices') return { status: 200, data: {
         devices: available.map(({ key, name, simulated }) => ({ key, name, simulated })),
       } }
       if (operation !== 'latest' && operation !== 'history') throw new ApiError(400, 'INVALID_OPERATION')
-      if (!available.length) throw new ApiError(503, 'CLOUD_NOT_CONFIGURED')
-      const device = available.find((entry) => entry.key === url.searchParams.get('device'))
-      if (!device) throw new ApiError(404, 'DEVICE_NOT_ALLOWED')
+      const requested = url.searchParams.get('device')
+      if (!['cloud-sim', 'esp32'].includes(requested)) throw new ApiError(404, 'DEVICE_NOT_ALLOWED')
+      if (requested === 'cloud-sim' ? !canSim : !liveDevices.size) throw new ApiError(403, 'DEVICE_NOT_ALLOWED')
+      const device = available.find((entry) => entry.key === requested)
+      if (!device) throw new ApiError(requested === 'esp32' ? 404 : 503, requested === 'esp32' ? 'DEVICE_NOT_ALLOWED' : 'CLOUD_NOT_CONFIGURED')
       const base = '/api/plugins/telemetry/DEVICE/' + device.id + '/values'
       const request = async (suffix, query) => {
         const url = new URL(base + suffix, env.TB_ORIGIN)
@@ -155,11 +161,13 @@ export function makeApi(env, fetcher = fetch, now = Date.now) {
 }
 
 export async function respond(req, res, env) {
-  const result = await makeApi(env)(new URL(req.url, 'http://localhost'), req.method)
-  res.statusCode = result.status
-  res.setHeader('Content-Type', 'application/json; charset=utf-8')
-  res.setHeader('X-Content-Type-Options', 'nosniff')
-  res.setHeader('Cache-Control', 'no-store')
-  if (req.method !== 'GET') res.setHeader('Allow', 'GET')
-  res.end(JSON.stringify(result.data))
+  if (pagesCors(authConfig(env)?.bridge, req, res, ['devices', 'latest', 'history'])) return
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET')
+    return sendJson(res, { status: 405, data: { error: 'METHOD_NOT_ALLOWED' } })
+  }
+  const access = await authorizeTelemetry(env, req.headers)
+  if (access.status !== 200) return sendJson(res, access)
+  const result = await makeApi(env, fetch, Date.now, access)(new URL(req.url, 'http://localhost'), req.method)
+  return sendJson(res, result)
 }

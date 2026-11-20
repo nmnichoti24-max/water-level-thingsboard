@@ -1,9 +1,11 @@
+import { apiAccess, apiUrl } from './apiTarget.js'
+
 const ERROR_TEXT = {
   CLOUD_NOT_CONFIGURED: 'ยังไม่ได้เปิดการอ่านข้อมูล ThingsBoard ที่เซิร์ฟเวอร์',
   UPSTREAM_ACCESS_DENIED: 'ThingsBoard ปฏิเสธสิทธิ์อ่านข้อมูล ตรวจ API key และสิทธิ์ของ Device',
   UPSTREAM_RATE_LIMIT: 'ThingsBoard จำกัดความถี่ชั่วคราว ลองใหม่ภายหลัง',
   UPSTREAM_UNREACHABLE: 'เชื่อมต่อ ThingsBoard ไม่สำเร็จหรือคำขอหมดเวลา',
-  DEVICE_NOT_ALLOWED: 'Device นี้ยังไม่ได้กำหนดในเซิร์ฟเวอร์',
+  DEVICE_NOT_ALLOWED: 'บัญชีนี้ไม่มีสิทธิ์อ่านข้อมูลจากอุปกรณ์นี้ หรืออุปกรณ์ไม่พร้อมใช้งาน',
 }
 
 const INVALID_RESPONSE = 'API ของเว็บส่งข้อมูลในรูปแบบที่ไม่รองรับ'
@@ -18,7 +20,7 @@ export async function readTelemetry(operation, { device, range, signal } = {}) {
   let response
   let data
   try {
-    response = await fetch('/api/telemetry?' + query, { signal: requestSignal, cache: 'no-store' })
+    response = await fetch(apiUrl('/api/telemetry?' + query), { ...apiAccess(), signal: requestSignal, cache: 'no-store' })
     data = await response.json().catch(() => null)
     requestSignal.throwIfAborted()
   } catch {
@@ -27,6 +29,9 @@ export async function readTelemetry(operation, { device, range, signal } = {}) {
   }
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('waterguard:session-expired'))
+    }
     const code = data?.error
     throw new Error(Object.hasOwn(ERROR_TEXT, code) ? ERROR_TEXT[code] : 'อ่านข้อมูลจาก ThingsBoard ไม่สำเร็จ')
   }

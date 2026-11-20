@@ -6,6 +6,7 @@ import { alertHistory, CLOUD_SIM_SETTINGS, DEFAULT_SETTINGS, estimateRuntime, me
 const deviceId = '11111111-1111-4111-8111-111111111111'
 const now = 1_800_000_000_000
 const env = { TB_ENABLE_CLOUD_READ: '1', TB_ORIGIN: 'https://thingsboard.cloud', TB_API_KEY: 'test-value-only', TB_SIM_DEVICE_ID: deviceId }
+const makeSimApi = (settings, fetcher, clock) => makeApi(settings, fetcher, clock, { canSim: true })
 const endpoint = (params) => new URL('http://localhost/api/telemetry?' + params)
 
 test('calibrates the known SIM sample and clamps a calibrated valid measurement', () => {
@@ -44,17 +45,17 @@ test('settings reject overlapping thresholds and invalid polling; battery uses w
 
 test('the proxy restricts methods, IDs, windows, hosts and opt-in', async () => {
   const fail = () => assert.fail('invalid inputs must not reach ThingsBoard')
-  const api = makeApi(env, fail)
+  const api = makeSimApi(env, fail)
   assert.deepEqual((await api(endpoint('op=devices'))).data, { devices: [{ key: 'cloud-sim', name: 'ESP32-S3-Water-Level-SIM', simulated: true }] })
   assert.equal((await api(endpoint('op=latest&device=' + deviceId))).status, 404)
   assert.equal((await api(endpoint('op=history&device=cloud-sim&range=toString'))).status, 400)
   assert.equal((await api(endpoint('op=latest&device=cloud-sim'), 'POST')).status, 405)
-  assert.equal((await makeApi({ ...env, TB_ORIGIN: 'https://bad.example' }, fail)(endpoint('op=latest'))).status, 503)
-  assert.equal((await makeApi({ ...env, TB_ENABLE_CLOUD_READ: '0' }, fail)(endpoint('op=latest'))).status, 503)
+  assert.equal((await makeSimApi({ ...env, TB_ORIGIN: 'https://bad.example' }, fail)(endpoint('op=latest&device=cloud-sim'))).status, 503)
+  assert.equal((await makeSimApi({ ...env, TB_ENABLE_CLOUD_READ: '0' }, fail)(endpoint('op=latest&device=cloud-sim'))).status, 503)
 })
 
 test('latest REST reads device activity separately and does not reuse old distance after timeout', async () => {
-  const api = makeApi(env, async (url, options) => {
+  const api = makeSimApi(env, async (url, options) => {
     assert.equal(url.origin, 'https://thingsboard.cloud')
     assert.equal(options.headers['X-Authorization'], 'ApiKey test-value-only')
     return Response.json(url.pathname.endsWith('/SERVER_SCOPE')
@@ -66,14 +67,14 @@ test('latest REST reads device activity separately and does not reuse old distan
 })
 
 test('a ThingsBoard null placeholder does not supersede the newest real reading', async () => {
-  const api = makeApi(env, async (url) => Response.json(url.pathname.endsWith('/SERVER_SCOPE') ? []
+  const api = makeSimApi(env, async (url) => Response.json(url.pathname.endsWith('/SERVER_SCOPE') ? []
     : { distance: [{ ts: now - 1000, value: '35' }], sensorValid: [{ ts: now, value: null }] }), () => now)
   const { data } = await api(endpoint('op=latest&device=cloud-sim'))
   assert.deepEqual(data.sample, { ts: now - 1000, distance: 35, sensorValid: null, reportedStatus: null })
 })
 
 test('history is sorted, includes invalid timestamps as gaps and retains nulls', async () => {
-  const api = makeApi(env, async (url) => {
+  const api = makeSimApi(env, async (url) => {
     assert.equal(url.searchParams.get('startTs'), String(now - 3600000))
     return Response.json({ distance: [{ ts: now, value: '40' }, { ts: now - 2000, value: '65' }],
       sensorValid: [{ ts: now - 1000, value: 'false' }] })
@@ -85,18 +86,18 @@ test('history is sorted, includes invalid timestamps as gaps and retains nulls',
 
 test('upstream errors return stable public codes without credentials or fabricated readings', async () => {
   for (const [upstream, code] of [[401, 'UPSTREAM_ACCESS_DENIED'], [429, 'UPSTREAM_RATE_LIMIT'], [500, 'UPSTREAM_ERROR']]) {
-    const api = makeApi(env, () => Promise.resolve(new Response(env.TB_API_KEY, { status: upstream })))
+    const api = makeSimApi(env, () => Promise.resolve(new Response(env.TB_API_KEY, { status: upstream })))
     const { data } = await api(endpoint('op=latest&device=cloud-sim'))
     assert.deepEqual(data, { error: code })
   }
-  const api = makeApi(env, () => Promise.reject(new Error(env.TB_API_KEY)))
+  const api = makeSimApi(env, () => Promise.reject(new Error(env.TB_API_KEY)))
   assert.deepEqual((await api(endpoint('op=latest&device=cloud-sim'))).data, { error: 'UPSTREAM_UNREACHABLE' })
 })
 
 test('public login only enables the cloud simulation and keeps its credential server-side', async () => {
   const publicEnv = { ...env, TB_API_KEY: '', TB_PUBLIC_SIM_ID: deviceId, TB_REAL_DEVICE_ID: deviceId }
   let logins = 0
-  const api = makeApi(publicEnv, async (url, options) => {
+  const api = makeSimApi(publicEnv, async (url, options) => {
     if (url.pathname === '/api/auth/login/public') {
       logins += 1
       assert.deepEqual(JSON.parse(options.body), { publicId: deviceId })
@@ -105,7 +106,7 @@ test('public login only enables the cloud simulation and keeps its credential se
     assert.equal(options.headers['X-Authorization'], 'Bearer temporary-test-value')
     return Response.json(url.pathname.endsWith('/SERVER_SCOPE') ? [] : {})
   }, () => now)
-  assert.equal((await api(endpoint('op=latest&device=esp32'))).status, 404)
+  assert.equal((await api(endpoint('op=latest&device=esp32'))).status, 403)
   const result = await api(endpoint('op=latest&device=cloud-sim'))
   assert.equal(result.status, 200)
   assert.equal(logins, 1)

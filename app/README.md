@@ -1,8 +1,127 @@
-# ESP32-S3 IoT Water Level Monitoring & Alert System
+# WaterGuard Pro · ESP32-S3 IoT Water Level Monitor
 
 เว็บแอปภาษาไทยสำหรับแสดงระดับน้ำและแจ้งเตือนบนหน้าเว็บ ใช้ React, Vite, Chart.js, Lucide และ Vercel Functions โดยใช้ ThingsBoard Cloud เก็บ Telemetry และ Device Attributes
 
 [เปิด Web App บน Vercel](https://esp32s3-water-level-monitor.vercel.app/) แล้วเลือก **SIM · ESP32-S3-Water-Level-SIM** เพื่อดูข้อมูลจำลองที่บันทึกไว้ใน ThingsBoard Cloud
+
+ลิงก์ Vercel ข้างต้นเป็นรุ่นสาธิตที่เผยแพร่ก่อนเพิ่มบัญชี WaterGuard Pro โค้ดรุ่นที่มี Login ต้องตั้งค่าและทดสอบ Supabase Auth ก่อนเผยแพร่
+
+## GitHub Pages และการส่งต่อการเข้าสู่ระบบผ่าน Vercel
+
+URL เป้าหมายคือ [WaterGuard Pro บน GitHub Pages](https://nmnichoti24-max.github.io/water-level-thingsboard/#/login) หน้า Login พาผู้ใช้ไปเปิด Vercel แบบเต็มหน้าเพื่อกรอกรหัสผ่านหรือกู้บัญชี Pages ใช้ `#/dashboard`, `#/history`, `#/alerts`, `#/settings`, `#/battery` และอ่านลิงก์รูปแบบเดิมได้ สำหรับ Direct URL แบบ DEMO ให้เติม `?demo=1` ต่อท้าย hash เช่น `/#/history?demo=1` DEMO ใช้ข้อมูลในเบราว์เซอร์และไม่เรียก API
+
+Vercel ใช้คุกกี้ first-party แบบ HttpOnly, SameSite=Strict และ Secure บน HTTPS เมื่อเปิดส่วน GitHub Pages แล้ว คุกกี้ของ Vercel มีเพียงรหัสเซสชันอ้างอิงแบบสุ่ม ส่วน Supabase access/refresh token เก็บเข้ารหัสใน Redis Vercel ส่ง code อายุ 60 วินาทีกลับเฉพาะ callback ที่กำหนด Pages ตรวจ state และแลก code ด้วย PKCE S256 Redis ใช้ Lua เปรียบเทียบและลบ code ในคำสั่งเดียว API รับ Bearer ของ WaterGuard Pro อายุสูงสุด 5 นาทีและตรวจว่าเซสชันยังอยู่ใน Redis ทุกครั้ง Pages เก็บ Bearer ในหน่วยความจำ ส่วน sessionStorage ใช้เก็บ state และตัวตรวจ PKCE ชั่วคราวกับเครื่องหมายสำหรับกลับเข้าเซสชันหลังรีโหลด ไม่มี Supabase token หรือ Bearer ใน Web Storage
+
+คำขอจาก Pages ส่งแบบ `credentials: 'omit'` CORS อนุญาตเฉพาะ Origin ของ Pages สำหรับการสมัคร การแลก code, logout และอ่าน Telemetry การ Login กู้บัญชี และกรอก OTP ยืนยันอีเมลเปิด Backend แบบเต็มหน้า เมื่อออกจากระบบ Vercel ลบเซสชันใน Redis เพื่อยกเลิกสิทธิ์ของ Bearer และคุกกี้อ้างอิงทันที แล้วขอเพิกถอน refresh token ที่ Supabase หาก Supabase ติดต่อไม่ได้ เว็บจะแจ้งผลแยกจากการลบเซสชันของแอป
+
+### สิ่งที่ต้องตั้งค่าหลังได้รับอนุญาต
+
+1. เตรียม Supabase Auth และเทมเพลต OTP ตามหัวข้อถัดไป ตัวแปร Auth และ ThingsBoard ทั้งหมดอยู่ใน Vercel เพิ่ม `AUTH_PAGES_REDIRECT_URL=https://nmnichoti24-max.github.io/water-level-thingsboard/` แบบไม่มี query หรือ fragment และใช้ `APP_ORIGIN=https://esp32s3-water-level-monitor.vercel.app`
+2. หลังยืนยันแผนค่าใช้จ่าย ให้เตรียม Upstash Redis แบบฐานเดียวสำหรับโปรเจกต์ คัดลอก REST URL และโทเคนที่เขียนข้อมูลได้เข้า `AUTH_REDIS_REST_URL` กับ `AUTH_REDIS_REST_TOKEN` ฝั่งเซิร์ฟเวอร์ แผน Free ระบุ $0 ต่อเดือนและ 500,000 คำสั่งต่อเดือน เอกสารยังระบุ Pay as You Go ที่ $0.20 ต่อ 100,000 คำสั่งและมีค่าเก็บข้อมูลตามการใช้จริง โดยทุกคำขอ Telemetry ที่ระบุ Bearer ใช้ Redis อ่านเซสชันและ ACL แยกจากคำสั่งที่ใช้ Login และต่ออายุ [ราคา Upstash Redis](https://upstash.com/pricing/redis) · [Lua atomic ผ่าน REST](https://upstash.com/blog/lua-scripting-on-upstash-redis-atomic-operations-over-http)
+3. หลังผ่านการตรวจด้วยบัญชีจริงและได้รับอนุญาตให้เผยแพร่ ให้ตั้ง **Settings → Pages → Source → GitHub Actions** แล้วรัน Workflow **WaterGuard Pro on GitHub Pages** จาก `main` ด้วยตนเอง Workflow ส่งเฉพาะแอปที่ Build แล้วและใช้ `VITE_API_BASE_URL` ซึ่งมีเพียง URL สาธารณะ [GitHub Pages Workflows](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)
+
+### ทดสอบในเครื่องกับ Provider และ Redis จริงเมื่อมีค่าแล้ว
+
+ทดสอบที่สองพอร์ตใน Windows ตั้งใน `app/.env.local` ชั่วคราวให้ `APP_ORIGIN=http://127.0.0.1:4177` และ `AUTH_PAGES_REDIRECT_URL=http://127.0.0.1:4180/water-level-thingsboard/` ใช้ `npm run dev -- --port 4177` สำหรับหน้าล็อกอินและ API ใส่ `VITE_API_BASE_URL=http://127.0.0.1:4177` ใน `app/.env.local` ด้วย จากนั้นเปิด PowerShell อีกหน้าต่างที่โฟลเดอร์ `app` และรัน `npm run dev -- --mode pages --port 4180` เปิด `http://127.0.0.1:4180/water-level-thingsboard/#/history` ทดสอบรหัสผ่านจริงและ OTP จริง จากนั้นตรวจ Refresh, Logout, รูปแบบ Origin ใน Network และการปฏิเสธ Telemetry หลัง Logout พอร์ตทดสอบใช้ loopback เดียวกัน เมื่อมีสภาพแวดล้อมเผยแพร่ที่ได้รับอนุญาตจึงต้องทดสอบเพิ่มบนสองโดเมนจริงและเปิดบล็อก third-party cookies
+
+ใน GitHub Pages หน้า Login จะตรวจสถานะของ Vercel ก่อนเปิด Login Bridge และหน้า Register จะปิดการส่งฟอร์มเมื่อ API หรือฐานบัญชียังไม่พร้อม ผู้ใช้เข้า DEMO ได้จากลิงก์ในหน้า Login หรือเปิด [Dashboard DEMO](https://nmnichoti24-max.github.io/water-level-thingsboard/#/dashboard?demo=1) โดยตรง
+
+## บัญชี Username
+
+หน้า `#/register` ใช้ Username, รหัสผ่าน และยืนยันรหัสผ่าน ระบบบัญชี Username ไม่ต้องใช้ SMTP, OTP หรืออีเมล ผู้ใช้บัญชีเดิมเลือก **เข้าสู่ระบบด้วยบัญชีอีเมลเดิม** เพื่อใช้ Supabase Auth ต่อได้ บัญชี Username จะเริ่มด้วย DEMO เท่านั้น รหัสผ่านถูกแฮชฝั่งเซิร์ฟเวอร์ด้วย Argon2id (32 MiB, 3 รอบ, 1 thread, salt สุ่ม) PostgreSQL เก็บเฉพาะ hash และข้อมูลบัญชี Redis เก็บเซสชันอายุจำกัด, code PKCE, ตัวนับ และสิทธิ์แยกตามบัญชี
+
+### ตั้งค่า PostgreSQL ใน Supabase
+
+1. ใช้โปรเจกต์ทดสอบหรือฐานที่ผู้ดูแลอนุญาตให้ทดสอบ ก่อนปรับฐานที่มีข้อมูลจริง ให้สำรองและทดสอบกู้คืน Apply ไฟล์ `database/001_username_accounts.sql` ด้วยเจ้าของ Postgres ไฟล์สร้าง schema ส่วนตัวและเปิด RLS โดยให้ role `waterguard_accounts` อ่านและเพิ่มบัญชีเท่าที่จำเป็น
+2. ให้ผู้ดูแลสร้าง PostgreSQL login ชื่อ `waterguard_app` ซึ่งสืบทอด `waterguard_accounts` โดยใช้ `create role waterguard_app login inherit;` และ `grant waterguard_accounts to waterguard_app;` จากนั้นใช้คำสั่ง interactive `\password waterguard_app` ใน psql ด้วยบัญชีผู้ดูแลเพื่อกำหนดรหัสผ่านของ role หลีกเลี่ยงการใส่รหัสผ่านใน SQL Editor, command history หรือแชต ใช้ runtime role นี้แทน postgres หรือ service role
+3. ใน Supabase → **Connect** ใช้ **Shared Transaction pooler** สำหรับ Vercel ที่พอร์ต `6543` เปลี่ยน username ใน connection string เป็น `waterguard_app.<project-ref>` และใช้รหัสผ่านของ role ที่สร้าง แอปตรวจ TLS certificate เสมอ หากต้องใช้ CA ของ Supabase ให้ใส่ค่า PEM ใน `AUTH_ACCOUNT_DATABASE_CA` [การเชื่อม Postgres](https://supabase.com/docs/guides/database/connecting-to-postgres)
+4. ใส่ `AUTH_ACCOUNT_DATABASE_URL` เฉพาะใน `app/.env.local` หรือ Vercel Environment Variables ฝั่งเซิร์ฟเวอร์ ตั้ง `AUTH_ENABLE_USERNAME_REGISTRATION=1` หลังยืนยันฐานและพร้อมทดสอบเท่านั้น คง `AUTH_ENABLE_REGISTRATION` ปิดไว้สำหรับการสมัครอีเมลเดิม ไม่ต้องเปิด Public Signup ใน Supabase สำหรับบัญชี Username
+5. ทดสอบสมัครชื่อซ้ำพร้อมกัน, สมัครและ Login จริง, Refresh, Logout, การบล็อกเมื่อไม่มี ACL และการเพิกถอนสิทธิ์ ตรวจการใช้งานจาก Browser เพราะ unit test ใช้ PostgreSQL แบบฝังในเครื่อง การทดสอบ Redis จริงกับฐานแบบฝังให้ตั้ง `$env:WG_TEST_REAL_REDIS='1'` แล้วรัน `node --test test/username.test.js` จากโฟลเดอร์ `app` โดยใช้ Upstash ที่กำหนดในไฟล์ local
+
+Username เก็บเป็นตัวพิมพ์เล็ก และ UNIQUE constraint ตัดสินคำขอที่เข้าพร้อมกัน คำขอสมัครจำกัด 5 ครั้งต่อ IP และ 3 ครั้งต่อชื่อใน 15 นาที ส่วน Login จำกัด 30 ครั้งต่อ IP และ 10 ครั้งต่อชื่อใน 15 นาที การสมัครไม่สร้างเซสชัน ต้อง Login อีกครั้ง เซสชันใช้ code และ PKCE เดิมและไม่มีรหัสผ่านหรือ hash ใน Redis
+
+### สิทธิ์ บัญชีเดิม และการกู้คืน
+
+- บัญชี Username ใหม่ได้ UUID จาก Postgres Redis ACL ใช้คีย์ `wg:v1:acl:` ตามด้วย Base64URL SHA-256 ของ `<Supabase Project URL>/auth/v1|username|<Username Account UUID>` เมื่อไม่พบ ACL จะปฏิเสธ SIM และ LIVE ส่วนบัญชี Supabase เดิมคง User ID และคีย์เดิมที่ไม่มี `|username` กลางค่า
+- การย้ายบัญชีเดิมต้องให้ผู้ดูแลยืนยันตัวตนและจับคู่แยกเป็นรายบัญชี บันทึก UID เดิมไว้ ใช้ UID เดิมเมื่อสร้างบัญชี Username ของเจ้าของเดิมตามขั้นตอน migration ที่อนุมัติ คัดลอกเฉพาะ grant ที่ตรวจแล้วเข้า namespace ใหม่ และทดสอบทั้งสองทางก่อนยุติบัญชีเดิม ชื่อที่เหมือนกันไม่ก่อให้เกิดการเชื่อมบัญชี และ runtime role ไม่มีสิทธิ์กำหนด UID เองหรือย้าย grant
+- ระบบ Username ยังไม่มี self-service reset หากลืมรหัสผ่านให้ติดต่อผู้ดูแลผ่านช่องทางที่ยืนยันเจ้าของได้ ห้ามรีเซ็ตจากชื่อ Username อย่างเดียว ถ้ารีเซ็ตโดยผู้ดูแลหลังตรวจหลักฐาน ให้สร้าง Argon2id hash ใหม่ผ่านขั้นตอนที่เก็บรหัสผ่านไว้นอก SQL history และเพิ่ม `credential_version` เซสชันเก่าจะถูกตัดในการตรวจครั้งถัดไป ส่วนการถอนสิทธิ์ SIM/LIVE ใน Redis มีผลในคำขอถัดไป
+- Upstash Free มี 500,000 คำสั่งต่อเดือนและข้อมูล 250 MB ถ้าไม่ได้ใช้งานอย่างน้อย 30 วันอาจถูกเก็บเข้าคลัง แม้กู้จาก snapshot ได้ต้องเตรียมรับมือกับ endpoint ที่ใช้ไม่ได้และข้อมูลระหว่างจุดสำรอง อย่าเก็บบัญชีถาวรหรือ password hash ไว้ใน Redis สำรอง ACL แยกจาก session และทดสอบ restore เมื่อเปลี่ยน Redis endpoint [ราคา Upstash](https://upstash.com/pricing/redis) · [นโยบายฐานที่ไม่ได้ใช้](https://upstash.com/docs/redis/help/faq) · [Backup/Restore](https://upstash.com/docs/redis/features/backup)
+- Supabase Free ควรสำรอง Postgres ออกนอกบริการเอง เก็บไฟล์ที่มี hash เข้ารหัสและจำกัดผู้เข้าถึง ทดสอบกู้คืนก่อนเปิดใช้งานจริง [Supabase Database Backups](https://supabase.com/docs/guides/platform/backups)
+
+## บัญชี Supabase เดิมแบบอีเมลและ OTP
+
+หน้า `#/register` ส่งข้อมูลผ่าน `POST /api/auth?op=register` โดยไม่มีคุกกี้หรือ Bearer เซิร์ฟเวอร์ตรวจขนาด JSON ไม่เกิน 4 KB, Origin, รูปแบบอีเมล และรหัสผ่านอย่างน้อย 12 ตัวอักษร สูงสุด 72 ไบต์ จำกัดการสมัคร 20 ครั้งต่อ IP และ 5 ครั้งต่ออีเมลต่อ 15 นาที การยืนยันอีเมลจำกัด 40 ครั้งต่อ IP และ 8 ครั้งต่ออีเมลต่อ 15 นาที Redis ใช้คีย์อนุพันธ์และกำหนด TTL ทุกตัวนับ แอปตอบเหมือนกันเมื่อ Supabase รับคำขอใหม่หรือแจ้งว่าบัญชีมีอยู่แล้ว
+
+### เตรียม SMTP และตรวจการส่งก่อนเปิดสมัคร
+
+Brevo Free รองรับอีเมล Transactional 300 ฉบับต่อวันโดยไม่ต้องใช้บัตร หากมีโดเมนที่จัดการ DNS ได้ ให้ยืนยันโดเมนและ Sender ใน Brevo ก่อน หากใช้ที่อยู่ Gmail หรือโดเมนที่ยังไม่ยืนยัน Brevo อาจเปลี่ยนที่อยู่ From เป็นโดเมนของผู้ให้บริการ และบางบัญชีอาจต้องเปิดใช้งาน Transactional Email เพิ่ม [แผน Brevo](https://help.brevo.com/hc/en-us/articles/208589409-About-Brevo-s-pricing-plans) · [เงื่อนไขผู้ส่ง](https://help.brevo.com/hc/en-us/articles/14925263522578-Comply-with-Gmail-Yahoo-and-Microsoft-s-requirements-for-email-senders)
+
+1. ใน Brevo ไปที่ **Settings → SMTP & API → SMTP** และสร้าง SMTP key สำหรับ WaterGuard Pro เก็บ SMTP login และ SMTP key ไว้สำหรับกรอกใน Supabase [คู่มือ SMTP key](https://help.brevo.com/hc/en-us/articles/7959631848850-Create-and-manage-your-SMTP-keys)
+2. ใน Supabase เปิด **Authentication → Emails → SMTP Settings → Enable custom SMTP** ใส่ **Sender email** ที่ยืนยันใน Brevo, **Sender name** เป็น WaterGuard Pro, **Host** เป็น `smtp-relay.brevo.com`, **Port** เป็น `587`, **Username** เป็น SMTP login และ **Password** เป็น SMTP key แล้วกด Save เก็บคีย์ไว้เฉพาะใน Supabase [ค่า SMTP ของ Brevo](https://help.brevo.com/hc/en-us/articles/7924908994450-Send-transactional-emails-using-Brevo-SMTP) · [คู่มือ Supabase](https://supabase.com/docs/guides/auth/auth-smtp)
+3. ใน **Emails → Confirm sign up** ใช้เทมเพลต OTP ด้านล่างและกด Save คง **Confirm email** เปิดไว้ และคงทั้ง Public Signup และ `AUTH_ENABLE_REGISTRATION` ปิดระหว่างตรวจ SMTP
+4. หากต้องการตรวจการส่งจริงก่อนเปิดสมัคร ให้ตั้ง **Reset password** ให้มี `{{ .Token }}` และใช้อีเมลบัญชีทดสอบเดิมขอผ่าน **ลืมรหัสผ่าน?** หนึ่งครั้ง ตรวจกล่องจดหมายและสถานะ Delivered ใน Brevo การตรวจนี้ยืนยันการส่ง OTP กู้บัญชี ส่วน OTP สมัครและการยืนยันบัญชีใหม่ทดสอบหลังอนุญาตให้เปิดสมัคร เก็บรหัส OTP ไว้ในกล่องจดหมายและหน้าแอป
+
+
+### เปิดสมัครจริงหลังได้รับอนุญาต
+
+1. Supabase **Authentication → Sign In / Providers** เปิด Email และ Confirm email คง Allow anonymous sign-ins ปิดไว้ เปิด Allow new users to sign up หลังตั้งค่า SMTP และได้รับอนุญาตแล้วเท่านั้น
+2. ตั้ง **Authentication → Emails → SMTP Settings** ให้ส่งจากผู้ให้บริการที่อนุมัติแล้ว สำหรับโปรเจกต์ Free ใหม่ SMTP ในตัวจำกัดผู้รับให้เป็นสมาชิกทีม และแก้เทมเพลตไม่ได้จนเปิด Custom SMTP ตรวจโควตาและค่าใช้จ่ายของผู้ส่งก่อนตั้งค่า [เทมเพลตอีเมล](https://supabase.com/docs/guides/auth/auth-email-templates) · [Custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp)
+3. ใน **Authentication → URL Configuration** ตั้ง Site URL เป็น Origin ของ Backend แบบไม่มี path และเพิ่ม Redirect URL แบบเจาะจงสำหรับ Backend root เช่น `https://esp32s3-water-level-monitor.vercel.app/` เมื่อได้รับอนุญาตให้ Deploy เพิ่ม `http://127.0.0.1:4177/` เฉพาะสภาพแวดล้อมทดสอบที่ใช้งานจริง หลีกเลี่ยง wildcard และตรวจว่าอีเมลทดสอบลิงก์ไป Backend ที่ตั้งใจใช้ [Redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls)
+4. ใน **Authentication → Emails → Confirm sign up** ใช้เทมเพลต OTP นี้ได้ทั้ง Local และ Production ผู้รับกลับไปกรอกรหัสในหน้า «ยืนยันอีเมล» ของเว็บที่เปิดอยู่
+   ```html
+   <p>รหัสยืนยันอีเมล WaterGuard Pro ของคุณคือ {{ .Token }}</p>
+   <p>กลับไปที่หน้า WaterGuard Pro แล้วเลือกยืนยันอีเมลเพื่อกรอกรหัสนี้</p>
+   ```
+5. ตั้งตัวแปรด้านล่างใน `app/.env.local` หรือ Vercel Environment Variables ตามสภาพแวดล้อมที่ได้รับอนุญาต ตั้ง `AUTH_ENABLE_REGISTRATION=1` เมื่อขั้นตอนอีเมลพร้อมแล้วเท่านั้น เซิร์ฟเวอร์ตรวจสถานะ Confirm email จาก Supabase ก่อนส่งคำขอสมัครจริง และแอปปิดการสมัครเมื่อ Redis ไม่พร้อม
+
+| ตัวแปร | การใช้งาน |
+| --- | --- |
+| `APP_ORIGIN` | Origin ของ Backend แบบไม่มี slash ท้าย เช่น `http://127.0.0.1:4177` |
+| `AUTH_SUPABASE_URL` | Project URL จาก Supabase |
+| `AUTH_SUPABASE_PUBLISHABLE_KEY` | Publishable key ของโปรเจกต์ เก็บฝั่ง Backend |
+| `AUTH_SESSION_KEY` | ค่าสุ่ม 32 ไบต์ Base64URL แยก Local/Production |
+| `AUTH_PAGES_REDIRECT_URL` | URL ฐาน Pages ที่แน่นอนและมี slash ท้าย |
+| `AUTH_REDIS_REST_URL`, `AUTH_REDIS_REST_TOKEN` | REST URL และโทเคนแบบเขียนได้ เก็บฝั่ง Backend |
+| `AUTH_ENABLE_REGISTRATION` | ค่าเริ่มต้น `0` ใช้ `1` หลังอนุมัติและ SMTP พร้อม |
+| `TB_ENABLE_LIVE_READ` | ค่าเริ่มต้น `0` เปิดหลังมีอุปกรณ์จริงและได้รับอนุญาต |
+| `VITE_API_BASE_URL` | Origin สาธารณะของ Backend สำหรับ Pages Build |
+
+ไม่ต้องใช้ Supabase Secret หรือ Service Role Key กับแอป ห้ามเปลี่ยนชื่อตัวแปรลับให้ขึ้นต้นด้วย `VITE_` ไฟล์ `.env.local` ต้องอยู่ใน Git ignore
+
+ทดสอบเปิดหน้า `#/register` กรอกอีเมลใหม่ แล้วลอง Login ก่อนยืนยัน ต้องยังไม่มีเซสชัน นำ OTP ในอีเมลไปกรอกที่ `#/confirm-email` บน Backend เซิร์ฟเวอร์เรียก Supabase `/verify` ตรวจอีเมลและสถานะยืนยัน ขอเพิกถอนเซสชันชั่วคราวที่ Supabase ออกให้ แล้วส่งกลับ URL Login ของ Pages ที่กำหนดไว้ การยืนยันไม่ออกเซสชัน WaterGuard Pro ให้ Login ด้วยรหัสผ่านใหม่อีกครั้งและตรวจว่ายังอ่าน SIM/LIVE ไม่ได้จนได้รับสิทธิ์
+
+ข้อจำกัดด้าน abuse การจำกัดคำขอที่ Vercel ครอบคลุม endpoint ของแอป Supabase Public Signup เปิด endpoint ของผู้ให้บริการเองด้วย จึงควรตั้ง Supabase Auth Rate Limits ให้เหมาะกับโควตา SMTP และประเมิน CAPTCHA ของ Supabase ก่อนเปิดรับสมัครทั่วไป การเปิด CAPTCHA ต้องเพิ่มการรองรับใน UI ก่อน [Supabase Rate Limits](https://supabase.com/docs/guides/auth/rate-limits) · [Supabase CAPTCHA](https://supabase.com/docs/guides/auth/auth-captcha)
+
+## สิทธิ์ ThingsBoard
+
+| สถานะ | DEMO | SIM | LIVE |
+| --- | --- | --- | --- |
+| GUEST | ได้ | — | — |
+| UNVERIFIED | ได้ | — | — |
+| VERIFIED_USER | ได้ | — | — |
+| SIM_VIEWER | ได้ | ได้ | — |
+| LIVE_VIEWER | ได้ | เฉพาะเมื่อให้ SIM แยก | เฉพาะ UUID ของ Device ที่อนุญาต |
+| ADMIN ผู้ดูแล Upstash | ได้ | ตาม ACL ของบัญชีแอป | ตาม ACL ของบัญชีแอป |
+
+ACL ที่เชื่อถือได้เป็น Redis JSON `{"sim":true,"liveDevices":[]}` ใช้คีย์ `wg:v1:acl:` ต่อด้วย SHA-256 แบบ Base64URL ของ `<Supabase Project URL>/auth/v1|<Supabase User ID ตัวพิมพ์เล็ก>` ค่าเริ่มต้นเมื่อไม่มีคีย์คือสิทธิ์ว่าง API อ่าน ACL จาก Redis ทุกคำขอและไม่เชื่อ role, email domain หรือ metadata ที่ส่งจาก Client การยกเลิกสิทธิ์มีผลกับคำขอถัดไปแม้เซสชันเดิมยังใช้ได้ รายชื่อ `AUTH_ALLOWED_EMAILS` และ `AUTH_LIVE_EMAILS` แบบเดิมจึงไม่ใช้กำหนดสิทธิ์ในรุ่นนี้
+
+### ย้ายสิทธิ์เดิมอย่างเจาะจง
+
+1. ตรวจรายการ AUTH_ALLOWED_EMAILS และ AUTH_LIVE_EMAILS แยกตามสภาพแวดล้อม ใน Workspace พบ SIM เดิมหนึ่งบัญชีและไม่มี LIVE เดิม เก็บรายการอ้างอิงไว้ฝั่งผู้ดูแลเท่านั้น
+2. สำหรับแต่ละบัญชีเดิม ให้ยืนยันว่าเจ้าของบัญชีและอีเมลที่ยืนยันแล้วตรงกับรายการ จากนั้นคัดลอก User UID จาก Authentication → Users ให้สิทธิ์ SIM ตามขั้นตอนด้านล่างเฉพาะ UID ที่ตรวจแล้ว หากยังหารายการผู้ใช้เดิมไม่พบ ให้รอการตรวจสอบและคงสิทธิ์ว่าง
+3. หลังทดสอบ SIM ให้บัญชีเดิมและตรวจว่าบัญชีใหม่ยังได้ 403 จึงค่อยลบค่ารายชื่อเก่าจากสภาพแวดล้อมนั้น สำหรับ LIVE ต้องมี UUID อุปกรณ์ที่ตรวจแล้ว ได้รับอนุญาต และเปิด TB_ENABLE_LIVE_READ แยกต่างหาก ห้ามสร้างสิทธิ์จากอีเมลที่เพิ่งสมัครหรือใช้ wildcard
+
+### ให้และเพิกถอน SIM สำหรับบัญชีทดสอบ
+
+1. เปิด Supabase **Authentication → Users** และคัดลอก **User UID** ของบัญชีทดสอบที่ยืนยันแล้ว
+2. ใน PowerShell ที่โฟลเดอร์ `app` สร้างชื่อคีย์สำหรับ UID นั้น คำสั่งแสดงเฉพาะชื่อคีย์ Redis
+   ```powershell
+   $wgUserId = Read-Host 'Supabase User UID'
+   node --input-type=module -e "import {loadEnv} from 'vite'; import {sha256} from './server/bridgeStore.js'; const uid=process.argv[1].toLowerCase(); if(!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(uid)) process.exit(1); const env=loadEnv('development',process.cwd(),''); if(!env.AUTH_SUPABASE_URL) process.exit(1); console.log('wg:v1:acl:'+sha256(env.AUTH_SUPABASE_URL+'/auth/v1|'+uid))" $wgUserId
+   ```
+3. เจ้าของฐานเปิด Upstash **Data Browser** เพิ่มคีย์ประเภท **String** ด้วยชื่อจากขั้นก่อนหน้าและค่า `{"sim":true,"liveDevices":[]}` โดยไม่ตั้ง TTL ถ้ามี ACL เดิมให้แก้เฉพาะ `sim` ทดสอบเปิดแอปใหม่และเลือก SIM เมื่อเพิกถอนให้เปลี่ยนเป็น `"sim":false` โดยรักษาสิทธิ์ LIVE อื่นที่ตั้งไว้
+4. Bootstrap ผู้ดูแลผ่านสิทธิ์ใน Upstash Console ของเจ้าของโปรเจกต์เท่านั้น แอปไม่มี endpoint ให้ผู้ใช้เพิ่มสิทธิ์ตนเอง ถ้าจะเพิ่มหน้าจัดการสิทธิ์ภายหลัง ให้แยกตาราง `telemetry_grants(user_id, source, device_id)` กับ `app_admins(user_id)` ใช้ primary key แบบผสมที่ไม่มีค่า NULL และอ้างอิง `auth.users(id)` เปิด RLS และปฏิเสธการเขียนจาก anon/authenticated ทั้งหมด ให้ Server ที่อ่านสิทธิ์ Admin จากตารางจัดการ grant/revoke พร้อม audit และให้เจ้าของ bootstrap Admin แรกจาก SQL Editor ด้วย UUID ที่ตรวจแล้วก่อนใช้จริง
+ThingsBoard Dashboard เดิมยังเปิดสาธารณะ การตรวจล่าสุดยืนยันว่าอ่าน `distance`, `waterLevel`, `waterPercent`, `status`, `sensorValid` และ `uptime` ของ Device SIM ผ่านสิทธิ์ Public ได้ กฎ Login ของ WaterGuard Pro ควบคุมเฉพาะ API ของเว็บนี้ ให้คงอุปกรณ์จริงอยู่นอกกลุ่ม Public
 
 | แหล่งข้อมูล | การทำงาน |
 | --- | --- |
@@ -23,10 +142,10 @@
 
    ```powershell
    npm ci
-   npm run dev
+   npm run dev -- --port 4175
    ```
 
-3. เปิด `http://127.0.0.1:5173/` เลือกโหมดในช่องด้านบน ไปที่ **ตั้งค่า** เพื่อเปลี่ยนการคาลิเบรต เกณฑ์แจ้งเตือน หรือช่วงเวลา Offline
+3. เปิด `http://127.0.0.1:4175/` และเลือก **เปิด DEMO ในเบราว์เซอร์** หรือเข้าสู่ระบบหลังตั้งค่า Auth แล้ว ไปที่ **ตั้งค่า** เพื่อเปลี่ยนการคาลิเบรต เกณฑ์แจ้งเตือน หรือช่วงเวลา Offline
 4. รัน `npm test` เพื่อตรวจการคำนวณและพฤติกรรม API และ `npm run build` เพื่อสร้างไฟล์สำหรับ deploy
 
 ## เปิดการอ่าน ThingsBoard Cloud
@@ -117,6 +236,8 @@
 พลังงานเซลล์ (Wh) = ความจุ (mAh) ÷ 1,000 × แรงดันเซลล์ (V) คูณประสิทธิภาพเพื่อได้พลังงานที่ใช้ได้ เวลาทำงาน (ชั่วโมง) เท่ากับพลังงานที่ใช้ได้ ÷ [5 V × กระแสเฉลี่ย (mA) ÷ 1,000] ผลเป็นค่าประมาณจากข้อมูลที่กรอก
 
 ## Deploy บน Vercel
+
+สำหรับ WaterGuard Pro ให้ผ่านการทดสอบบัญชีและอีเมลกู้บัญชีกับ Provider จริงก่อน Deploy ตั้งตัวแปร Auth ใน Production เฉพาะเมื่อได้รับอนุญาตให้เผยแพร่รุ่นนี้
 
 1. โปรเจกต์ Vercel ที่ใช้อยู่สร้างด้วย CLI จากโฟลเดอร์ `app/` จึงแสดง Root Directory เป็น `.` หากนำเข้าจาก GitHub ทั้ง Repository ให้ตั้ง **Root Directory** เป็น `app` เลือก **Vite** และใช้ Node.js 22.x ตาม `engines.node` ใน `app/package.json` Vercel จะ build ไปยัง `dist/` และใช้ `api/telemetry.js` เป็น Function [Vite บน Vercel](https://vercel.com/docs/frameworks/frontend/vite) · [Node.js บน Vercel](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions)
 2. ใช้แผน **Hobby** สำหรับการสาธิต ตั้ง `TB_ORIGIN`, `TB_ENABLE_CLOUD_READ=1`, `TB_SIM_DEVICE_ID` และ `TB_PUBLIC_SIM_ID` ใน **Settings → Environment Variables → Production** สำหรับ Device จำลองที่อนุญาตให้ดูได้ และเว้น `TB_REAL_DEVICE_ID` กับ `TB_API_KEY` ไว้สำหรับ deployment สาธารณะของโครงงานนี้ เก็บ Device Access Token สำหรับการส่งข้อมูลไว้ฝั่ง PowerShell เท่านั้น การแก้ Environment Variables มีผลเมื่อ Deploy ครั้งถัดไป [Vercel Environment Variables](https://vercel.com/docs/environment-variables)

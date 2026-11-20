@@ -82,10 +82,11 @@ export function estimateRuntime({ capacity, voltage, efficiency, current }) {
 const STORAGE_KEY = 'water-monitor-prefs-v1'
 const SOURCES = { demo: CLOUD_SIM_SETTINGS, esp32: DEFAULT_SETTINGS, 'cloud-sim': CLOUD_SIM_SETTINGS }
 
-export function loadPreferences() {
+export function loadPreferences(scope) {
   let data
   try {
-    data = JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? {}
+    data = JSON.parse(localStorage.getItem(scope ? STORAGE_KEY + ':' + scope : STORAGE_KEY))
+    data ??= JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? {}
   } catch {
     data = {}
   }
@@ -96,6 +97,6 @@ export function loadPreferences() {
   return { source: Object.hasOwn(SOURCES, data.source) ? data.source : 'demo', profiles }
 }
 
-export function savePreferences(prefs) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs))
+export function savePreferences(prefs, scope) {
+  localStorage.setItem(scope ? STORAGE_KEY + ':' + scope : STORAGE_KEY, JSON.stringify(prefs))
 }
