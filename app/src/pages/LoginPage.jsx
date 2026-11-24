@@ -3,6 +3,7 @@ import { Eye, EyeOff, LockKeyhole } from 'lucide-react'
 import AuthLayout from '../components/AuthLayout'
 import { confirmationPage, routeHash } from '../lib/routes'
 import { authRequest, loginAvailability } from '../lib/authClient'
+import { loginIdentity } from '../lib/username'
 
 export default function LoginPage({ loading, message, onLogin, onExternal, confirmed, startScreen = 'login', initialLegacy = false }) {
   const [availability, setAvailability] = useState(null)
@@ -49,7 +50,7 @@ export default function LoginPage({ loading, message, onLogin, onExternal, confi
     setError('')
     setFeedback('')
     try {
-      if (login) await onLogin({ ...(usernameLogin ? { username } : { email }), password, remember })
+      if (login) await onLogin({ ...(usernameLogin ? loginIdentity(username) : { email }), password, remember })
       else if (!reset) {
         await authRequest('forgot', { email })
         changeScreen('reset')
@@ -93,7 +94,7 @@ export default function LoginPage({ loading, message, onLogin, onExternal, confi
             <div className="auth-options"><button type="button" className="auth-link" disabled={busy || !availability?.legacy} onClick={() => openExternal('legacy')}>เข้าสู่ระบบด้วยบัญชีอีเมลเดิม</button></div>
           </> : <form onSubmit={submit} aria-busy={busy}>
             {usernameLogin
-              ? <label className="auth-field"><span>Username</span><input type="text" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={32} required /></label>
+              ? <label className="auth-field"><span>Username หรืออีเมลบัญชีเดิม</span><input type="text" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={254} required /></label>
               : <label className="auth-field"><span>อีเมล</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" maxLength={254} required /></label>}
             {reset && <label className="auth-field"><span>รหัสยืนยัน</span><input value={code} onChange={(event) => setCode(event.target.value)} autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6,10}" maxLength={10} required /></label>}
             {(login || reset) && <div className="auth-field">

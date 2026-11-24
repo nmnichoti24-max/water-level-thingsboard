@@ -77,7 +77,9 @@ function Monitor({ user, onExit }) {
   const [exiting, setExiting] = useState(false)
   const catalog = useDevices()
   const { profiles } = prefs
-  const selected = catalog.devices.find(({ key }) => key === prefs.source) ?? catalog.devices[0]
+  // Until the user picks a source, start on SIM so new accounts land on data rather than an idle LIVE board.
+  const selected = catalog.devices.find(({ key }) => key === prefs.source) ??
+    catalog.devices.find(({ simulated }) => simulated) ?? catalog.devices[0]
   const source = selected?.key ?? ''
   const settings = profiles[source] ?? DEFAULT_SETTINGS
   const monitor = useMonitor(source, settings, range)
@@ -109,7 +111,7 @@ function Monitor({ user, onExit }) {
       <header className="topbar">
         <div className="top-context"><Waves size={18} /><span>ระบบตรวจวัดระดับน้ำ</span></div>
         <div className="top-actions">
-          {selected && <span className={'mode-tag ' + (isSimulated ? 'simulated' : 'live')}><span className="status-dot" />{isSimulated ? 'SIMULATED DATA' : 'LIVE DATA'}</span>}
+          {selected && <span className={'mode-tag ' + (isSimulated ? 'simulated' : 'live')}><span className="status-dot" />{isSimulated ? 'ข้อมูลจำลอง (SIM)' : 'ข้อมูลจริง (LIVE)'}</span>}
           {selected && <Source value={source} devices={catalog.devices} change={(value) => persist({ ...prefs, source: value })} />}
           <details className="profile-menu">
             <summary aria-label="เมนูบัญชี"><UserRound size={18} aria-hidden="true" /></summary>
@@ -120,6 +122,8 @@ function Monitor({ user, onExit }) {
       <main id="main-content">
         {catalog.error && <p role="alert" className="notice error">{catalog.error}</p>}
         {!catalog.loading && !catalog.error && !catalog.devices.length && <p role="status" className="notice">บัญชีนี้ยังไม่มีสิทธิ์อ่านข้อมูล ThingsBoard ติดต่อผู้ดูแลเพื่อขอสิทธิ์อ่านข้อมูล</p>}
+        {!catalog.loading && !catalog.error && catalog.devices.length > 0 && catalog.devices.every((device) => device.simulated) &&
+          <p role="status" className="notice">LIVE · ESP32-S3 ยังไม่พร้อมสำหรับบัญชีนี้ (ยังไม่เชื่อมอุปกรณ์จริงหรือยังไม่ได้รับสิทธิ์) แสดงเฉพาะข้อมูล SIM</p>}
         {exitError && <p role="alert" className="notice error">{exitError}</p>}
         <div className="page-heading"><div><h1>{NAV.find(([key]) => key === page)[1]}</h1><p>{page === 'dashboard' ? selected ? 'ระดับน้ำ สถานะอุปกรณ์ และการแจ้งเตือนจาก ' + selected.name : 'ระดับน้ำ สถานะอุปกรณ์ และการแจ้งเตือน' : {
           history: 'ดูแนวโน้มและสถิติของข้อมูลตามช่วงเวลา', alerts: 'ตรวจเหตุการณ์ที่พบจากระดับน้ำและสถานะเซนเซอร์',

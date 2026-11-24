@@ -14,14 +14,14 @@ export default function HistoryChart({ points, tankHeight }) {
       data: { datasets: [{
         label: 'ระดับน้ำ',
         data: points.map(({ ts, level }) => ({ x: ts, y: level ?? null })),
-        borderColor: '#36d7ed',
+        borderColor: '#3ba7e0',
         borderWidth: 2.5,
         backgroundColor: (context) => {
           const { chartArea, ctx } = context.chart
-          if (!chartArea) return 'rgba(54,215,237,.12)'
+          if (!chartArea) return 'rgba(59,167,224,.12)'
           const shade = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
-          shade.addColorStop(0, 'rgba(32,191,230,.30)')
-          shade.addColorStop(1, 'rgba(32,191,230,.015)')
+          shade.addColorStop(0, 'rgba(59,167,224,.32)')
+          shade.addColorStop(1, 'rgba(59,167,224,.02)')
           return shade
         },
         pointRadius: points.length < 25 ? 3 : 0,
@@ -34,8 +34,8 @@ export default function HistoryChart({ points, tankHeight }) {
         parsing: false, responsive: true, maintainAspectRatio: false, animation: false,
         interaction: { mode: 'nearest', axis: 'x', intersect: false },
         scales: {
-          x: { type: 'linear', ticks: { color: '#93a9bd', maxTicksLimit: 5, callback: (value) => dateLabel.format(value) }, grid: { display: false } },
-          y: { min: 0, max: tankHeight, ticks: { color: '#93a9bd', maxTicksLimit: 5, callback: (value) => formatNumber(value) + ' cm' }, grid: { color: '#24334a' }, border: { display: false } },
+          x: { type: 'linear', ticks: { color: '#93aeb5', maxTicksLimit: 5, callback: (value) => dateLabel.format(value) }, grid: { display: false } },
+          y: { min: 0, max: tankHeight, ticks: { color: '#93aeb5', maxTicksLimit: 5, callback: (value) => formatNumber(value) + ' cm' }, grid: { color: '#2a4a55' }, border: { display: false } },
         },
         plugins: { legend: { display: false }, tooltip: { callbacks: {
           title: (items) => formatDate(items[0]?.parsed.x),

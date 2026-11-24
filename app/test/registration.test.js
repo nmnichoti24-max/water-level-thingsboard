@@ -197,6 +197,26 @@ test('verified users need explicit Redis ACL; SIM and LIVE device scopes are ind
   assert.equal((await app.telemetry(live, cookie)).status, 403)
 })
 
+test('default access lets every signed-in account read SIM and LIVE without an ACL, while an explicit ACL still restricts', async () => {
+  const app = fixture({ AUTH_DEFAULT_SIM: '1', AUTH_DEFAULT_LIVE: '1' })
+  app.state.confirmed = true
+  const cookie = (await app.call('login', credentials)).cookie.split(';')[0]
+  const sim = 'op=latest&device=cloud-sim'
+  const live = 'op=history&device=esp32&range=1h'
+  assert.deepEqual((await app.telemetry('op=devices', cookie)).data.devices.map((d) => d.key).sort(), ['cloud-sim', 'esp32'])
+  for (const query of [sim, live]) assert.equal((await app.telemetry(query, cookie)).status, 200)
+  app.grant({ sim: false, liveDevices: [] })
+  for (const query of [sim, live]) assert.equal((await app.telemetry(query, cookie)).status, 403)
+  // Signed-out requests stay denied regardless of the default.
+  assert.equal((await app.telemetry(sim, '')).status, 401)
+  // LIVE default needs a valid device id; SIM-only default never exposes LIVE.
+  const simOnly = fixture({ AUTH_DEFAULT_SIM: '1' })
+  simOnly.state.confirmed = true
+  const other = (await simOnly.call('login', credentials)).cookie.split(';')[0]
+  assert.equal((await simOnly.telemetry(sim, other)).status, 200)
+  assert.equal((await simOnly.telemetry(live, other)).status, 403)
+})
+
 test('registration HTTP handler rejects oversized bodies and scopes the CORS preflight', async () => {
   function response() {
     const result = {}

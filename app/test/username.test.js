@@ -196,3 +196,10 @@ test('username throttling, opt-in, and changed credential version fail closed' +
     await a.db.close()
   }
 })
+
+test('an email typed in the Username field routes to the existing email login', async () => {
+  const { loginIdentity } = await import('../src/lib/username.js')
+  assert.deepEqual(loginIdentity(' owner@example.com '), { email: 'owner@example.com' })
+  assert.deepEqual(loginIdentity('Pump.Admin'), { username: 'Pump.Admin' })
+  assert.deepEqual(loginIdentity('bad@name'), { username: 'bad@name' })
+})

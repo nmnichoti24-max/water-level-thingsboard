@@ -5,7 +5,7 @@ import { RequestError } from '../components/LoadState'
 import HistoryPage from './HistoryPage'
 import AlertsPage from './AlertsPage'
 
-function Tank({ reading, stale }) {
+function Tank({ reading, stale, settings }) {
   const hasValue = Number.isFinite(reading.percent)
   return <section className="panel tank-panel">
     <div className="panel-title"><span className="tile-icon"><Droplets size={18} /></span><div><h2>ถังเก็บน้ำ</h2><p>ระดับน้ำเทียบความสูงช่วงใช้งาน</p></div></div>
@@ -15,7 +15,8 @@ function Tank({ reading, stale }) {
         <div className="tank-top" />
         <div className="tank-window">
           {hasValue && <div className={'tank-fill' + (stale ? ' stale' : '')} style={{ height: reading.percent + '%' }}><div className="water-surface" /></div>}
-          <div className="tank-stripes" />
+          {[['warning', settings.warning, 'เตือน'], ['danger', settings.danger, 'อันตราย']].map(([kind, at, label]) => Number.isFinite(at) &&
+            <div key={kind} className={'gauge-mark ' + kind} style={{ bottom: at + '%' }} aria-hidden="true"><span>{label} {at}%</span></div>)}
           <div className="tank-value"><strong>{formatNumber(reading.percent, 0)}<small>{hasValue ? '%' : ''}</small></strong><span>{hasValue ? 'ความจุช่วงใช้งาน' : 'ไม่มีค่าที่ใช้ได้'}</span></div>
         </div>
         <div className="tank-base" />
@@ -46,7 +47,7 @@ export default function DashboardPage({ monitor, settings, range, setRange, isSi
     {reading.state === 'SENSOR_ERROR' && <p role="alert" className="notice error">Sensor Error · ค่าไม่อยู่ในช่วงที่ตั้งไว้ เซนเซอร์รายงานผิดพลาด หรือไม่มีระยะในตัวอย่างล่าสุด</p>}
     {['WARNING', 'DANGER'].includes(reading.state) && !stale && <p role="status" className={'notice alert-banner ' + reading.state.toLowerCase()}><Bell size={17} />{STATUS_LABEL[reading.state]} · {formatNumber(reading.percent)}% เมื่อเทียบกับเกณฑ์ {reading.state === 'DANGER' ? settings.danger : settings.warning}%</p>}
     <div className="overview-grid">
-      <Tank reading={reading} stale={stale} />
+      <Tank reading={reading} stale={stale} settings={settings} />
       <div className="metrics-grid">
         <Metric icon={Waves} label="ระดับน้ำปัจจุบัน" value={formatNumber(reading.level)} unit="cm" note={notes} />
         <Metric icon={Gauge} label="ระดับน้ำในถัง" value={formatNumber(reading.percent)} unit="%" note={notes} />

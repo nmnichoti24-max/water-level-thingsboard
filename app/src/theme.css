@@ -1,0 +1,137 @@
+/* WaterGuard Pro visual layer: "staff gauge" identity.
+   Deep reservoir surfaces, one water-blue accent, status colours only where they carry meaning. */
+:root {
+  --ink: #e8f1f2;
+  --muted: #93aeb5;
+  --deep: #0f2229;
+  --panel-bg: #15303a;
+  --panel-raised: #1b3a45;
+  --line: #2a4a55;
+  --water: #3ba7e0;
+  --water-light: #8fd0f2;
+  --cyan: var(--water-light);
+  --amber: #f2b544;
+  --red: #f06a5b;
+  --green: #5bd39a;
+  --stroke: var(--line);
+  font-family: "IBM Plex Sans Thai", system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--deep);
+}
+
+/* Numbers line up when values update. */
+strong, .stats-strip, .events, .tank-scale, .battery-result { font-variant-numeric: tabular-nums; }
+
+/* Shell */
+.app-shell, .workspace { background: var(--deep); }
+.sidebar { background: #0c1c22; border-color: var(--line); }
+.brand-icon { background: var(--water); border-color: var(--water); color: #06202e; box-shadow: none; }
+.brand em, .auth-brand b { color: var(--water-light); }
+.nav-item { color: var(--muted); border-radius: 8px; }
+.nav-item:hover { background: #14303a; color: var(--ink); }
+.nav-item.selected { background: transparent; border-color: transparent; color: var(--ink); box-shadow: inset 3px 0 0 var(--water); border-radius: 0 8px 8px 0; }
+.sidebar-bottom { border-color: var(--line); }
+.topbar { background: #0f2229f2; border-color: var(--line); }
+.top-context svg { color: var(--water-light); }
+.source-picker select { background-color: var(--panel-bg); border-color: var(--line); }
+.profile-menu summary { background: var(--panel-bg); border-color: var(--line); color: var(--water-light); }
+.profile-card { background: var(--panel-raised); border-color: var(--line); }
+
+/* Tags read as words, not shouting labels. */
+.mode-tag, .status-pill { letter-spacing: 0; font-weight: 600; font-size: .78rem; }
+.mode-tag.simulated { background: #3a2e14; border-color: #6b5422; color: var(--amber); }
+.mode-tag.live { background: #12392c; border-color: #2a6b50; color: var(--green); }
+
+/* Panels: one quiet surface, no decorative gradients or glow. */
+.panel, .tank-panel, .battery-result {
+  background: var(--panel-bg);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: none;
+}
+.panel .tile-icon, .tile-icon { background: transparent; border: 0; width: 28px; height: 28px; color: var(--water-light); }
+.panel .tile-icon.green { color: var(--green); }
+.panel .tile-icon.amber { color: var(--amber); }
+.page-heading h1 { font-weight: 700; letter-spacing: -.01em; }
+.panel-title h2 { font-weight: 700; }
+.primary, .auth-submit.primary { background: var(--water); border-color: var(--water); color: #04202e; box-shadow: none; }
+.primary:hover, .auth-submit.primary:hover { background: var(--water-light); }
+.button-outline { background: transparent; border-color: var(--line); }
+.button-outline:hover { background: var(--panel-raised); }
+.notice { background: var(--panel-raised); border-color: var(--line); }
+.range-switch { background: var(--deep); border-color: var(--line); }
+.range-switch button[aria-pressed=true] { background: var(--water); color: #04202e; }
+.empty { background: #112831; }
+
+/* Readings: one panel with hairline dividers instead of four identical cards. */
+.metrics-grid {
+  gap: 0;
+  background: var(--panel-bg);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.metrics-grid > .panel { background: transparent; border: 0; border-radius: 0; }
+.metrics-grid > .metric { padding: 20px 20px 18px; min-height: 0; border-bottom: 1px solid var(--line); }
+.metrics-grid > .metric:nth-child(odd) { border-right: 1px solid var(--line); }
+.metric p { color: var(--muted); font-size: .86rem; }
+.metric strong { font-size: clamp(1.6rem, 2.8vw, 2.4rem); font-weight: 700; letter-spacing: -.02em; }
+.metric em { color: var(--amber); }
+.activity-card { background: #112831 !important; }
+.activity-card div + div { border-color: var(--line); }
+
+/* The staff gauge: the one memorable element. */
+.tank-visual { background: #112831; border-color: var(--line); min-height: 260px; }
+.tank-grid { display: none; }
+.tank-shell { width: min(46%, 170px); height: 210px; background: #1a3b47; border-color: #4f7b88; box-shadow: none; }
+.tank-top, .tank-base { background: #3d6470; border-color: #5d8794; }
+.tank-window { background: #0c1f26; border-color: #335763; }
+.tank-fill { background: linear-gradient(180deg, var(--water-light), var(--water) 18%, #1d6fa8); box-shadow: none; }
+.tank-fill.stale { filter: saturate(.35) brightness(.85); }
+.tank-stripes { display: none; }
+.tank-value strong { font-size: 3rem; font-weight: 700; text-shadow: 0 1px 6px #0009; }
+.gauge-mark { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed currentColor; z-index: 1; pointer-events: none; }
+.gauge-mark.warning { color: var(--amber); }
+.gauge-mark.danger { color: var(--red); }
+.gauge-mark span { position: absolute; right: 6px; top: -1.35em; font-size: .68rem; font-weight: 700; }
+.tank-scale {
+  height: 210px;
+  width: 44px;
+  margin-left: 14px;
+  padding: 0 0 0 10px;
+  color: var(--ink);
+  /* Staff-gauge "E" marks: alternating bands every 10% with tick lines. */
+  background:
+    repeating-linear-gradient(to top, var(--water-light) 0 2px, transparent 2px 10%) left / 8px 100% no-repeat,
+    repeating-linear-gradient(to top, #ffffff22 0 5%, transparent 5% 10%) left / 4px 100% no-repeat;
+}
+.tank-scale span { line-height: 1; font-size: .72rem; }
+.tank-footer { color: var(--muted); }
+
+/* Charts, alerts and forms */
+.events li { border-color: var(--line); }
+.alerts-panel .events { border-color: var(--line); }
+.unit-field, .event-filter select, .auth-field input { background: #0c1f26; border-color: var(--line); }
+.settings-group { border-color: var(--line); }
+.battery-result > strong { color: var(--water-light); text-shadow: none; }
+
+/* Auth: same gauge language, no orbits or grid decoration. */
+.auth-hero { background: #0c1c22; border-color: var(--line); }
+.auth-hero-grid, .auth-orbit { display: none; }
+.auth-tank { border-color: #4f7b88; background: #1a3b47; box-shadow: none; }
+.auth-tank::before, .auth-tank::after { background: #3d6470; border-color: #5d8794; }
+.auth-water { background: linear-gradient(180deg, var(--water-light), var(--water) 18%, #1d6fa8); border-top-color: var(--water-light); box-shadow: none; }
+.auth-ticks { background: repeating-linear-gradient(to bottom, var(--water-light) 0 2px, transparent 2px 10%); }
+.auth-sheet { background: var(--deep); }
+.auth-link { color: var(--water-light); }
+
+@media (max-width: 590px) {
+  .metrics-grid > .metric { padding: 12px; }
+  .metric strong { font-size: 1.45rem; }
+  .tank-shell, .tank-scale { height: 180px; }
+}
+@media (max-width: 850px) {
+  .sidebar nav#main-navigation { background: #0c1c22f5; border-color: var(--line); }
+  .nav-item.selected { box-shadow: inset 0 3px 0 var(--water); border-radius: 0 0 8px 8px; }
+}
+.water-surface { height: 6px; top: -2px; background: radial-gradient(ellipse at center, var(--water-light) 30%, transparent 68%) 0 0 / 31px 6px; opacity: .8; }

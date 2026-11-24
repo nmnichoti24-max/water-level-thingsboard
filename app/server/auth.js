@@ -28,6 +28,11 @@ export function authConfig(env) {
     origin, key, registrationEnabled: env.AUTH_ENABLE_REGISTRATION === '1',
     usernameRegistration: env.AUTH_ENABLE_USERNAME_REGISTRATION === '1',
     usernameDb: usernameDatabaseConfig(env),
+    // Access for signed-in accounts without an explicit Redis ACL. An explicit ACL always wins, so owners can still revoke.
+    defaultAcl: {
+      sim: env.AUTH_DEFAULT_SIM === '1',
+      liveDevices: env.AUTH_DEFAULT_LIVE === '1' && USER_ID.test(env.TB_REAL_DEVICE_ID ?? '') ? [env.TB_REAL_DEVICE_ID] : [],
+    },
     provider: env.AUTH_SUPABASE_URL + '/auth/v1',
     publishable: env.AUTH_SUPABASE_PUBLISHABLE_KEY,
     secure: !loopback, name: loopback ? 'wg_local' : '__Host-wg_session', bridge,
@@ -96,9 +101,9 @@ function activeSession(session, now) {
   return session && USER_ID.test(session.id) && session.until > now && session.accessUntil > now
 }
 
-async function telemetryPermissions(store, userId, providerScope) {
+async function telemetryPermissions(store, userId, providerScope, defaultAcl = {}) {
   const raw = store && await store.get('acl', providerScope + '|' + userId.toLowerCase())
-  const acl = raw ? JSON.parse(raw) : {}
+  const acl = raw ? JSON.parse(raw) : defaultAcl
   return {
     status: 200, canSim: acl?.sim === true,
     liveDevices: new Set(Array.isArray(acl?.liveDevices) ? acl.liveDevices.filter((id) => typeof id === 'string' && USER_ID.test(id)).map((id) => id.toLowerCase()) : []),
@@ -164,7 +169,7 @@ export async function authorizeTelemetry(env, headers, now = Date.now(), fetcher
     if (session?.kind === 'username' && (!store || !config.usernameDb)) return failure(401, 'AUTH_REQUIRED')
     const scope = session?.kind === 'username' ? config.provider + '|username' : config.provider
     return activeSession(session, now)
-      ? await telemetryPermissions(store, session.id, scope)
+      ? await telemetryPermissions(store, session.id, scope, config.defaultAcl)
       : failure(401, 'AUTH_REQUIRED')
   } catch { return failure(503, 'AUTH_UNAVAILABLE') }
 }
@@ -358,7 +363,7 @@ function logRegistration(operation, result) {
   console.info(JSON.stringify({ event: 'auth.registration', operation, status: result.status, error: result.data.error }))
 }
 
-export async function respondAuth(req, res, env) {
+export async function respondAuth(req, res, env, openAccounts = usernameAccounts) {
   const operation = new URL(req.url, 'http://localhost').searchParams.get('op')
   const config = authConfig(env)
   if (['registration-status', 'username-registration-status', 'login-status'].includes(operation)) {
@@ -389,7 +394,7 @@ export async function respondAuth(req, res, env) {
     if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('body')
   } catch { return sendJson(res, failure(400, 'AUTH_INPUT')) }
   try {
-    const result = await makeAuth(env)(operation, req.method, { ...req.headers, localAddress: req.socket?.remoteAddress }, body)
+    const result = await makeAuth(env, fetch, Date.now, openAccounts)(operation, req.method, { ...req.headers, localAddress: req.socket?.remoteAddress }, body)
     logRegistration(operation, result)
     return sendJson(res, result)
   } catch {
