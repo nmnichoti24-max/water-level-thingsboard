@@ -4,6 +4,9 @@ export const DEFAULT_SETTINGS = {
   warning: 70, danger: 85, refreshSeconds: 10, staleSeconds: 60,
 }
 export const CLOUD_SIM_SETTINGS = { ...DEFAULT_SETTINGS, sensorOffset: 30 }
+// Matches firmware/WaterGuard_ESP32S3/config.h defaults: SENSOR_TO_FULL_CM 30, SENSOR_TO_BOTTOM_CM 130.
+// sensorOffset 0 would put the full-tank surface inside the ultrasonic blind zone (< minDistance).
+export const LIVE_SETTINGS = { ...DEFAULT_SETTINGS, sensorOffset: 30 }
 export const formatNumber = (value, digits = 1) => Number.isFinite(value)
   ? new Intl.NumberFormat('th-TH', { maximumFractionDigits: digits }).format(value) : '—'
 export const formatDate = (value) => value
@@ -34,6 +37,21 @@ export function measure(sample, settings) {
   const percent = Math.round((level / tankHeight) * 10000) / 100
   const state = percent >= danger ? 'DANGER' : percent >= warning ? 'WARNING' : 'NORMAL'
   return { state, level, percent, distance, ts }
+}
+
+// online: newer than staleSeconds. stale: missed updates but within 3x. offline: board stopped sending.
+export function freshness(ageSeconds, staleSeconds) {
+  if (!Number.isFinite(ageSeconds)) return null
+  if (ageSeconds < staleSeconds) return 'online'
+  return ageSeconds < staleSeconds * 3 ? 'stale' : 'offline'
+}
+
+// Firmware values that reproduce the web calibration, so the device and the website agree.
+export function firmwareCalibration({ tankHeight, sensorOffset, minDistance, maxDistance, warning, danger }) {
+  return {
+    SENSOR_TO_FULL_CM: sensorOffset, SENSOR_TO_BOTTOM_CM: sensorOffset + tankHeight,
+    MIN_DISTANCE_CM: minDistance, MAX_DISTANCE_CM: maxDistance, WARNING_PERCENT: warning, DANGER_PERCENT: danger,
+  }
 }
 
 export function summarize(points) {
@@ -73,7 +91,7 @@ export function estimateRuntime({ capacity, voltage, efficiency, current }) {
 }
 
 const STORAGE_KEY = 'water-monitor-prefs-v1'
-const SOURCES = { esp32: DEFAULT_SETTINGS, 'cloud-sim': CLOUD_SIM_SETTINGS }
+const SOURCES = { esp32: LIVE_SETTINGS, 'cloud-sim': CLOUD_SIM_SETTINGS }
 
 export function loadPreferences(scope) {
   let data

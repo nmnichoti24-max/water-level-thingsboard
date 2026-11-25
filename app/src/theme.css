@@ -52,6 +52,7 @@ strong, .stats-strip, .events, .tank-scale, .battery-result { font-variant-numer
 .panel .tile-icon, .tile-icon { background: transparent; border: 0; width: 28px; height: 28px; color: var(--water-light); }
 .panel .tile-icon.green { color: var(--green); }
 .panel .tile-icon.amber { color: var(--amber); }
+.panel .tile-icon.red { color: var(--red); }
 .page-heading h1 { font-weight: 700; letter-spacing: -.01em; }
 .panel-title h2 { font-weight: 700; }
 .primary, .auth-submit.primary { background: var(--water); border-color: var(--water); color: #04202e; box-shadow: none; }
@@ -135,3 +136,6 @@ strong, .stats-strip, .events, .tank-scale, .battery-result { font-variant-numer
   .nav-item.selected { box-shadow: inset 0 3px 0 var(--water); border-radius: 0 0 8px 8px; }
 }
 .water-surface { height: 6px; top: -2px; background: radial-gradient(ellipse at center, var(--water-light) 30%, transparent 68%) 0 0 / 31px 6px; opacity: .8; }
+.device-map { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: .86rem; }
+.device-map th, .device-map td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.device-map th { color: var(--muted); font-weight: 600; }

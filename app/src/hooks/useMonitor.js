@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { alertHistory, measure } from '../model'
+import { alertHistory, freshness, measure } from '../model'
 import { readTelemetry } from '../lib/telemetryClient'
 
 export function useDevices() {
@@ -44,10 +44,12 @@ export function useMonitor(source, settings, range) {
     const run = async () => {
       try {
         const value = await readTelemetry('latest', { device: source, signal: task.signal })
-        if (!task.signal.aborted) setLatest({ key: source, value, loading: false, error: '' })
+        // Server clock minus browser clock, so a wrong PC clock does not make LIVE data look fresh or stale.
+        const skew = Number.isFinite(value.serverTime) ? value.serverTime - Date.now() : 0
+        if (!task.signal.aborted) setLatest({ key: source, value, skew, loading: false, error: '' })
       } catch (error) {
         if (!task.signal.aborted) setLatest((prev) => ({
-          key: source, value: prev.key === source ? prev.value : null, loading: false, error: error.message,
+          key: source, value: prev.key === source ? prev.value : null, skew: prev.key === source ? prev.skew : 0, loading: false, error: error.message,
         }))
       } finally {
         if (!task.signal.aborted) timer = setTimeout(run, settings.refreshSeconds * 1000)
@@ -87,10 +89,12 @@ export function useMonitor(source, settings, range) {
     const ordered = reading.ts && reading.ts > (points.at(-1)?.ts ?? 0) ? [...points, reading] : points
     return alertHistory(ordered)
   }, [points, reading])
-  const ageSeconds = sample ? Math.max(0, Math.floor((clock - sample.ts) / 1000)) : null
-  const online = ageSeconds === null ? null : ageSeconds < settings.staleSeconds
+  const ageSeconds = sample ? Math.max(0, Math.floor((clock + (current.skew ?? 0) - sample.ts) / 1000)) : null
+  const fresh = freshness(ageSeconds, settings.staleSeconds)
+  const online = fresh === null ? null : fresh === 'online'
   return {
-    reading, points, alerts, ageSeconds, online,
+    reading, points, alerts, ageSeconds, online, freshness: fresh,
+    reportedStatus: sample?.reportedStatus ?? null,
     activity: current.value?.deviceActive ?? null,
     lastActivity: current.value?.lastActivity ?? null,
     latestError: source ? current.error : '', historyError: source ? series.error : '',

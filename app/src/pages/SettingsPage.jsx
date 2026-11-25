@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { HardDrive, Settings2 } from 'lucide-react'
-import { validateSettings } from '../model'
+import { Cpu, HardDrive, Settings2 } from 'lucide-react'
+import { firmwareCalibration, formatNumber, validateSettings } from '../model'
 import { NumericFields, Source } from '../components/MonitorControls'
 import { RequestError } from '../components/LoadState'
 
@@ -45,5 +45,19 @@ export default function SettingsPage({ source, settings, devices, change, save, 
       {message.success && <p role="status" className="notice success">{message.success}</p>}
       <button type="submit" className="primary">บันทึกการตั้งค่า</button>
     </form>}
+    {source === 'esp32' && <DeviceSettings form={form} />}
   </div>
+}
+
+// LIVE only: the board computes waterLevel/waterPercent/status itself, so config.h must hold the same numbers.
+function DeviceSettings({ form }) {
+  const values = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, String(value).trim() ? Number(value) : NaN]))
+  const device = firmwareCalibration(values)
+  return <section className="panel settings-panel"><div className="panel-title"><span className="tile-icon"><Cpu size={19} /></span><div><h2>ค่าที่ต้องตั้งที่อุปกรณ์ ESP32-S3</h2><p>firmware/WaterGuard_ESP32S3/config.h · ต้อง Upload ใหม่เมื่อเปลี่ยน</p></div></div>
+    <p className="hint">เว็บคำนวณระดับน้ำจาก <code>distance</code> ด้วยค่าคาลิเบรตด้านบน (เก็บในเบราว์เซอร์นี้เท่านั้น) ส่วนบอร์ดคำนวณ <code>waterLevel</code>, <code>waterPercent</code> และ <code>status</code> ที่ส่งเข้า ThingsBoard ด้วยค่าใน config.h ตั้งให้ตรงกันตามตารางนี้ หากไม่ตรง หน้าภาพรวมจะแจ้งว่าสถานะที่อุปกรณ์รายงานไม่ตรงกับเว็บ</p>
+    <table className="device-map"><thead><tr><th>config.h</th><th>ค่า</th></tr></thead><tbody>
+      {Object.entries(device).map(([key, value]) => <tr key={key}><td><code>{key}</code></td><td>{Number.isFinite(value) ? formatNumber(value) : '—'}</td></tr>)}
+    </tbody></table>
+    <p className="hint">ตั้งที่เว็บเท่านั้น: รอบรีเฟรช Live และเวลา Offline (Stale หลัง {formatNumber(values.staleSeconds, 0)} วินาที, Offline หลัง {formatNumber(values.staleSeconds * 3, 0)} วินาที) · ตั้งที่อุปกรณ์เท่านั้น: Wi-Fi, Device Access Token (secrets.h), ขา TRIG/ECHO และรอบส่งข้อมูล <code>TELEMETRY_INTERVAL_MS</code> (ค่าเริ่มต้น 5 วินาที)</p>
+  </section>
 }
