@@ -3,6 +3,18 @@ import { authRequest } from '../lib/authClient'
 import { PAGES_BUILD, setPagesToken } from '../lib/apiTarget'
 import { finishPagesLogin, pagesResume, startPagesLogin } from '../lib/pagesLogin'
 
+const AUTO_RENEW = 'wg:auto-renew-at'
+
+// The renewal timer runs on the PC clock; when that clock lags the server, the 5-minute Pages
+// token can expire first. Allow one silent bridge renewal per minute on a 401 instead of signing out.
+function autoRenewAllowed() {
+  try {
+    if (Date.now() - (Number(sessionStorage.getItem(AUTO_RENEW)) || 0) < 60000) return false
+    sessionStorage.setItem(AUTO_RENEW, String(Date.now()))
+    return true
+  } catch { return false }
+}
+
 function checkedSession(payload) {
   if (!payload.user?.id || !(payload.user.username || payload.user.email) || !Number.isFinite(payload.renewAt)) {
     throw new Error('ไม่สามารถยืนยันเซสชันได้')
@@ -15,6 +27,7 @@ export function useSession(enabled = true) {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const renewal = useRef(null)
+  const renewing = useRef(false)
 
   useEffect(() => {
     if (!enabled) { setLoading(false); return }
@@ -52,6 +65,14 @@ export function useSession(enabled = true) {
     setMessage('เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง')
   }
 
+  function rejectedByServer() {
+    if (renewing.current) return
+    if (!PAGES_BUILD || !autoRenewAllowed()) return expire()
+    renewing.current = true
+    renewal.current?.abort()
+    startPagesLogin().catch(() => { renewing.current = false; expire() })
+  }
+
   useEffect(() => {
     if (!enabled || !session) return
     const task = new AbortController()
@@ -70,12 +91,12 @@ export function useSession(enabled = true) {
         }
       })
     }, Math.max(1000, session.renewAt - Date.now() - 12000))
-    window.addEventListener('waterguard:session-expired', expire)
+    window.addEventListener('waterguard:session-expired', rejectedByServer)
     return () => {
       task.abort()
       if (renewal.current === task) renewal.current = null
       clearTimeout(timer)
-      window.removeEventListener('waterguard:session-expired', expire)
+      window.removeEventListener('waterguard:session-expired', rejectedByServer)
     }
   }, [session, enabled])
 
