@@ -10,5 +10,11 @@
 #define THINGSBOARD_HOST "thingsboard.cloud"
 
 // Access Token of the REAL device "ESP32-S3-Water-Level" (NOT the -SIM device).
+// Used only in WG_MODE_LIVE. Leave the placeholder until the sensor is wired.
 // ThingsBoard -> Entities -> Devices -> ESP32-S3-Water-Level -> Copy access token.
 #define THINGSBOARD_DEVICE_TOKEN "paste-live-device-access-token"
+
+// Access Token of the SIMULATION device "ESP32-S3-Water-Level-SIM".
+// Used only in WG_MODE_SIM. Must differ from THINGSBOARD_DEVICE_TOKEN (build fails otherwise).
+// ThingsBoard -> Entities -> Devices -> ESP32-S3-Water-Level-SIM -> Copy access token.
+#define THINGSBOARD_SIM_DEVICE_TOKEN "paste-sim-device-access-token"

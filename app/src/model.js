@@ -4,9 +4,10 @@ export const DEFAULT_SETTINGS = {
   warning: 70, danger: 85, refreshSeconds: 10, staleSeconds: 60,
 }
 export const CLOUD_SIM_SETTINGS = { ...DEFAULT_SETTINGS, sensorOffset: 30 }
-// Matches firmware/WaterGuard_ESP32S3/config.h defaults: SENSOR_TO_FULL_CM 30, SENSOR_TO_BOTTOM_CM 130.
+// Matches firmware/WaterGuard_ESP32S3/config.h defaults: SENSOR_TO_FULL_CM 25, SENSOR_TO_BOTTOM_CM 100.
 // sensorOffset 0 would put the full-tank surface inside the ultrasonic blind zone (< minDistance).
-export const LIVE_SETTINGS = { ...DEFAULT_SETTINGS, sensorOffset: 30 }
+// refreshSeconds 5 = firmware TELEMETRY_INTERVAL_MS.
+export const LIVE_SETTINGS = { ...DEFAULT_SETTINGS, tankHeight: 75, sensorOffset: 25, refreshSeconds: 5 }
 export const formatNumber = (value, digits = 1) => Number.isFinite(value)
   ? new Intl.NumberFormat('th-TH', { maximumFractionDigits: digits }).format(value) : '—'
 export const formatDate = (value) => value

@@ -106,8 +106,8 @@ arduino-cli upload --fqbn esp32:esp32:esp32s3 -p COM3 firmware/WaterGuard_ESP32S
 ```
 WaterGuard Pro ESP32-S3 firmware 1.0.0
 Device target: ThingsBoard LIVE device on thingsboard.cloud (token hidden)
-Calibration: full=30.0 cm bottom=130.0 cm span=100.0 cm range=20-600 cm thresholds W=70% D=85%
-Sensor: TRIG=GPIO4 ECHO=GPIO5 interval=5000 ms
+Calibration: full=25.0 cm bottom=100.0 cm span=75.0 cm range=20-600 cm thresholds W=70% D=85%
+Sensor: TRIG=GPIO5 ECHO=GPIO6 interval=5000 ms
 [WiFi] Connecting to "<ชื่อ Wi-Fi>" (timeout 20 s)
 [WiFi] Connected IP=192.168.x.x RSSI=-58 dBm
 [Sensor] OK 7/7 pings  distance=xx.x cm  level=xx.x cm  percent=xx.xx %  status=NORMAL

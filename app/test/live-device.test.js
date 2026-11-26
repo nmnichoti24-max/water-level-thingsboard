@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { firmwareCalibration, freshness, LIVE_SETTINGS, loadPreferences, measure } from '../src/model.js'
+import { CLOUD_SIM_SETTINGS, firmwareCalibration, freshness, LIVE_SETTINGS, loadPreferences, measure } from '../src/model.js'
 import { makeApi } from '../server/telemetry.js'
 import { historyCsv } from '../src/lib/historyCsv.js'
 
@@ -14,6 +14,14 @@ test('firmware config.h defaults reproduce the web LIVE calibration and threshol
   assert.ok(LIVE_SETTINGS.sensorOffset >= LIVE_SETTINGS.minDistance, 'full-tank surface must be outside the blind zone')
   // Firmware uploads every TELEMETRY_INTERVAL_MS; the web must not call that stale.
   assert.ok(define('TELEMETRY_INTERVAL_MS') / 1000 < LIVE_SETTINGS.staleSeconds)
+  // The LIVE web view polls as often as the board uploads.
+  assert.equal(LIVE_SETTINGS.refreshSeconds, define('TELEMETRY_INTERVAL_MS') / 1000)
+})
+
+test('firmware SIM calibration matches the web cloud-sim profile, independent of LIVE', () => {
+  const sim = firmwareCalibration(CLOUD_SIM_SETTINGS)
+  assert.equal(define('SIM_SENSOR_TO_FULL_CM'), sim.SENSOR_TO_FULL_CM)
+  assert.equal(define('SIM_SENSOR_TO_BOTTOM_CM'), sim.SENSOR_TO_BOTTOM_CM)
 })
 
 test('firmware formula and web formula give the same level, percent and status', () => {
@@ -31,8 +39,8 @@ test('firmware formula and web formula give the same level, percent and status',
     assert.equal(web.percent, fw.percent, 'percent at ' + d)
     assert.equal(web.state, fw.state, 'state at ' + d)
   }
-  assert.equal(measure({ distance: 60, sensorValid: true }, LIVE_SETTINGS).state, 'WARNING')
-  assert.equal(measure({ distance: 45, sensorValid: true }, LIVE_SETTINGS).state, 'DANGER')
+  assert.equal(measure({ distance: 42, sensorValid: true }, LIVE_SETTINGS).state, 'WARNING')
+  assert.equal(measure({ distance: 30, sensorValid: true }, LIVE_SETTINGS).state, 'DANGER')
   assert.equal(measure({ sensorValid: false }, LIVE_SETTINGS).state, 'SENSOR_ERROR')
 })
 
@@ -69,6 +77,6 @@ test('a firmware sensor error payload reaches the web as Sensor Error, never as 
 })
 
 test('CSV export labels LIVE rows as LIVE', () => {
-  const csv = historyCsv([measure({ ts: 1_800_000_000_000, distance: 45, sensorValid: true }, LIVE_SETTINGS)], 'esp32')
-  assert.match(csv, /,LIVE,45,85,85,DANGER/)
+  const csv = historyCsv([measure({ ts: 1_800_000_000_000, distance: 30, sensorValid: true }, LIVE_SETTINGS)], 'esp32')
+  assert.match(csv, /,LIVE,30,70,93.33,DANGER/)
 })

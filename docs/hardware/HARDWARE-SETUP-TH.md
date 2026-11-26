@@ -13,7 +13,7 @@
 ## ขั้นตอน
 
 1. ถอดสาย USB ออกจากบอร์ด
-2. ต่อสายตาม [WIRING-DIAGRAM-TH.md](WIRING-DIAGRAM-TH.md): VCC→5V, GND→GND, TRIG→GPIO4, ECHO→ตัวแบ่งแรงดัน→GPIO5
+2. ต่อสายตาม [WIRING-DIAGRAM-TH.md](WIRING-DIAGRAM-TH.md): VCC→5V, GND→GND, TRIG→GPIO5, ECHO→ตัวแบ่งแรงดัน→GPIO6
 3. ทำ "รายการตรวจก่อนจ่ายไฟ" ทั้ง 8 ข้อในไฟล์ผังการต่อสาย
 4. เสียบ USB-C ที่ช่อง **COM**
 5. Upload เฟิร์มแวร์ตาม [ARDUINO-UPLOAD-GUIDE-TH.md](ARDUINO-UPLOAD-GUIDE-TH.md)

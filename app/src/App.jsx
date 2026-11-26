@@ -77,9 +77,9 @@ function Monitor({ user, onExit }) {
   const [exiting, setExiting] = useState(false)
   const catalog = useDevices()
   const { profiles } = prefs
-  // Until the user picks a source, start on SIM so new accounts land on data rather than an idle LIVE board.
+  // Until the user picks a source, start on the real board when the account can read it, else SIM.
   const selected = catalog.devices.find(({ key }) => key === prefs.source) ??
-    catalog.devices.find(({ simulated }) => simulated) ?? catalog.devices[0]
+    catalog.devices.find(({ simulated }) => !simulated) ?? catalog.devices[0]
   const source = selected?.key ?? ''
   const settings = profiles[source] ?? DEFAULT_SETTINGS
   const monitor = useMonitor(source, settings, range)
