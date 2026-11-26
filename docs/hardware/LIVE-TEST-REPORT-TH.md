@@ -87,4 +87,120 @@
 | W4 | ACL บัญชี | ⚠️ บัญชีที่สร้างด้วย `create-account.mjs --grant-sim` มี ACL `{sim:true, liveDevices:[]}` ซึ่งชนะ `AUTH_DEFAULT_LIVE` → เพิ่ม `scripts/grant-live.mjs` (dry-run เป็นค่าเริ่มต้น) | โค้ด `server/auth.js` |
 | W5 | Frontend เลือก SIM เป็นค่าเริ่มต้น | ✅ แก้แล้ว: เลือก LIVE ก่อนเมื่อบัญชีอ่านได้ · LIVE refresh 5 s | `App.jsx`, `model.js` |
 | W6 | Unit tests / build Vercel / build Pages | ✅ 43/43 · build ผ่านทั้งสอง | `npm test`, `npm run build`, `npm run build:pages` |
-| W7 | Deploy + ทดสอบ Production กับบอร์ดจริง | ⏳ รออนุญาต | – |
+| W7 | Vercel env `TB_REAL_DEVICE_ID`, `TB_ENABLE_LIVE_READ=1` (ไม่ตั้ง `AUTH_DEFAULT_LIVE` ตามคำสั่ง: LIVE เฉพาะบัญชีที่ grant) | ✅ เพิ่มแล้ว · Device ID ยืนยันกับ ThingsBoard = ESP32-S3-Water-Level | `vercel env ls`, `/api/device/{id}` |
+| W8 | Vercel env `TB_API_KEY` | ❌ ยังไม่มีใน Production / Preview / Development ของโปรเจกต์ `asdasd/esp32s3-water-level-monitor` (ตรวจ 2 รอบ 26 พ.ย.) | `vercel env ls` (ดูเฉพาะชื่อ) |
+| W9 | Commit + Push + Merge main | ✅ `06a1468` (Session retry), `9a4b0e8` (Firmware 1.2.0 + LIVE web) · main fast-forward ไม่มี conflict · สแกนข้อมูลลับ 14 ค่า ไม่พบ | git |
+| W10 | GitHub Pages Deploy (workflow_dispatch #3 จาก main) | ✅ สำเร็จ 42 s · bundle `index-C8n4RR0v.js` มี LIVE 75/25 cm refresh 5 s และเลือก LIVE ก่อน | https://nmnichoti24-max.github.io/water-level-thingsboard/ |
+| W11 | grant-live.mjs บัญชี Dev5678 | ✅ ผู้ใช้อนุญาต → `--apply` สำเร็จ: `sim=true liveDevices=1` (SIM คงเดิม) ตรวจซ้ำด้วย dry-run แล้ว | สคริปต์ |
+| W11a | SENSOR ERROR end-to-end (Serial ↔ ThingsBoard) | ✅ Serial `NO_ECHO` + upload `sensorValid:false` ไม่มีค่าระดับน้ำ ↔ ThingsBoard latest `distance:null, sensorValid:false` · uploads ok=250 fail=0 · ⏳ OLED/LED รอผู้ใช้ยืนยันด้วยตา | `serial-live-now.log` |
+| W12 | Vercel Production Deploy | ✅ READY 2 ครั้ง (ครั้งที่ 2 หลังแก้ env) · alias https://esp32s3-water-level-monitor.vercel.app · API ไม่ล็อกอิน → 401 AUTH_REQUIRED | `vercel deploy --prod` |
+| W13 | ตั้ง `TB_REAL_DEVICE_ID`, `TB_ENABLE_LIVE_READ` ใหม่เป็น Config (ไม่ใช่ข้อมูลลับ) เพื่อให้ตรวจค่าได้ | ✅ ตรวจจาก `vercel env pull`: ค่าตรงกับ local / = "1" · Redis และ Supabase ของ Production = ที่ใช้ grant | `vercel env pull` (เทียบความเท่ากัน ลบไฟล์ทันที) |
+| W14 | เว็บ Production ล็อกอิน Dev5678 (รอบแรก) | ✅ ล็อกอินได้ · ❌ Dropdown มีแต่ SIM → สาเหตุ: `TB_API_KEY` ใน Production เป็นค่าว่าง (ตอนเพิ่มเจอ "Value is empty") | Browser pane |
+| W15 | ผู้ใช้เขียนทับ `TB_API_KEY` (`--force`) + Deploy ครั้งที่ 3 | ✅ READY | `vercel deploy --prod` |
+| W16 | Dropdown | ✅ มี `LIVE · ESP32-S3-Water-Level` (เลือกเป็นค่าเริ่มต้น) และ `SIM · ESP32-S3-Water-Level-SIM` | Browser pane |
+| W17 | Dashboard LIVE | ✅ แหล่งข้อมูล "LIVE · ESP32-S3 จริง", Device Activity ACTIVE, Online 3–8 วินาที | Browser pane 14:53 |
+| W18 | Serial = เว็บ ณ เวลาเดียวกัน | ✅ Serial `distance=136.2 cm 0.00 % NORMAL` (ok=492 fail=0) = เว็บ ระยะ 136.2 cm, 0 cm, 0 %, NORMAL | `serial-web-compare1.log` |
+| W19 | Settings LIVE | ✅ 75 / 25 / 20 / 600 cm, 70 / 85 %, รีเฟรช 5 วินาที, Offline 60 วินาที · ตาราง config.h แสดง 25 / 100 / 20 / 600 / 70 / 85 | Browser pane |
+| W20 | History LIVE | ✅ ข้อมูลจาก ThingsBoard, 1 ชม.: ต่ำสุด 0, สูงสุด 75, เฉลี่ย 28.4 cm, มีปุ่ม Export CSV | Browser pane |
+| W21 | Alerts LIVE | ✅ แสดง DANGER (86.5–100 %) และ SENSOR ERROR จากข้อมูลจริง กรองสถานะได้ | Browser pane |
+
+## 8. เกณฑ์สถานะ: ปัจจุบัน vs คำขอในอนาคต
+
+### 8.1 เกณฑ์ปัจจุบัน (ใช้งานอยู่ใน Firmware 1.2.0 และเว็บ Production · ใช้ทดสอบรอบนี้)
+
+สถานะคิดจาก **เปอร์เซ็นต์ระดับน้ำ** (`WARNING_PERCENT 70`, `DANGER_PERCENT 85`) โดย `waterPercent = (100 − Dist) / 75 × 100` จำกัด 0–100
+
+| ระยะ Dist | waterPercent | สถานะ | LED |
+|---|---|---|---|
+| 20 – 36.25 cm | ≥ 85 % | DANGER | แดงติดค้าง |
+| > 36.25 – 47.5 cm | ≥ 70 – < 85 % | WARNING | เหลือง |
+| > 47.5 – 600 cm (> 100 cm = 0 %) | < 70 % | NORMAL | เขียว |
+| < 20 cm, > 600 cm, NO_ECHO, valid < 4/7 | – | SENSOR ERROR | แดงกะพริบ |
+
+### 8.2 เกณฑ์ใหม่ที่ต้องการ (บันทึก 26 พ.ย. 2026 · **ยังไม่อนุญาตให้แก้ Firmware / Upload / เปลี่ยนเว็บ**)
+
+สถานะคิดจาก **ระยะ Dist** โดยตรง
+
+| ระยะ Dist (ค่าที่อ่านได้ถูกต้อง) | สถานะ | LED |
+|---|---|---|
+| < 20 cm หรืออ่านค่าไม่ได้ | SENSOR ERROR | แดงกะพริบ |
+| 20 – 30 cm (ส่วน 0–20 cm เป็น SENSOR ERROR ตามแถวบน) | DANGER | แดง |
+| > 30 – 50 cm | WARNING | เหลือง |
+| > 50 – 100 cm | NORMAL | เขียว |
+| > 100 cm | NORMAL, waterPercent 0 % | เขียว |
+
+- คงสูตรเปอร์เซ็นต์เดิม (empty 100 / full 25) เปอร์เซ็นต์ใช้แสดงผลเท่านั้น ไม่ใช้ตัดสินสถานะ
+- คงระบบ SENSOR ERROR เดิม (median 7 ครั้ง, ต้องได้ ≥ 4, ไม่ส่งค่าระดับน้ำเมื่อ error)
+- เมื่อแก้ ต้องให้ Firmware, OLED, LED, payload `status` ที่ส่ง ThingsBoard และเว็บ (Dashboard, History, Alerts, Settings) ใช้เกณฑ์เดียวกัน แล้ว Deploy ใหม่
+
+### 8.3 ความต่างที่ต้องรู้ก่อนเปลี่ยน
+
+| ระยะ | ปัจจุบัน | อนาคต |
+|---|---|---|
+| 30 – 36.25 cm | DANGER | WARNING |
+| 47.5 – 50 cm | NORMAL | WARNING |
+| > 100 cm | NORMAL | NORMAL (เหมือนเดิม) |
+
+## 9. ตรวจสอบปัญหา "นำวัตถุเข้าใกล้มากแล้วถังแสดง 95%" (26 พ.ย. 2026 15:00 · ตรวจอย่างเดียว ยังไม่แก้)
+
+### 9.1 ค่าจริง ณ เวลาเดียวกัน
+
+| ชั้น | ค่า | สูตร / หมายเหตุ |
+|---|---|---|
+| Serial ping ทั้ง 7 ครั้ง | 1647–1674 µs = 28.8–29.3 cm (นิ่งทุก ping) | `serial-95pct.log` |
+| Firmware | distance 28.8 cm, level 71.2 cm, **94.93 %**, DANGER | (100 − 28.8) / 75 × 100 = 94.93 ✓ |
+| ThingsBoard payload | `distance:28.8, waterLevel:71.2, waterPercent:94.93, status:DANGER, sensorValid:true, simulated:false` | HTTP 200 ok=573 |
+| Backend (`server/telemetry.js`) | ส่งต่อเฉพาะ `distance`, `sensorValid`, `status` ไม่คำนวณเปอร์เซ็นต์ | ไม่มีสูตร |
+| Frontend (`model.js measure()`) | 28.8 cm → level 71.2 cm, **94.9 %**, DANGER · รูปถังปัดเป็น **95 %** | ใช้โปรไฟล์ LIVE 75/25 ✓ |
+| localStorage | ไม่มีค่าที่บันทึกไว้ (`water-monitor-prefs*` ว่าง) → ใช้ค่าเริ่มต้น LIVE 75 / 25 / 20 / 600 / 70 / 85 | ไม่มี calibration เก่าค้าง |
+| ใช้ calibration SIM (100/30) ซ้ำหรือไม่ | ไม่ใช่: ถ้าใช้ SIM จะได้ 100 % (101.2 ถูก clamp) แต่เว็บแสดง 94.9 % | ✓ |
+
+### 9.2 สาเหตุ (สมมติฐาน · ต้องทดสอบซ้ำ)
+
+สูตรทุกชั้นตรงกันและตรงตามที่ต้องการ `clamp((100 − d) / 75 × 100, 0, 100)` · เว็บไม่ได้ใช้ calibration เก่าของ SIM · สิ่งที่พบคือ **เซนเซอร์รายงานค่านิ่งประมาณ 28.8–29.2 cm** ขณะนำวัตถุเข้าใกล้ จึงไม่ถึง ≤ 25 cm ที่ทำให้เป็น 100 %
+
+**ยังไม่สรุปว่าเป็นระยะอับของหัววัด** สาเหตุที่เป็นไปได้ (ต้องแยกด้วยการทดสอบซ้ำ):
+1. ระยะอับ / เสียงก้องของหัววัด JSN-SR04T
+2. วัตถุอื่นในลำคลื่นที่อยู่ห่างประมาณ 29 cm (ขั้น ก ตั้งเป้า 60 cm แต่วัดได้ 33.3 cm นิ่ง แสดงว่ามีวัตถุอื่นถูกวัดก่อนเป้าได้จริง)
+3. วัตถุทดสอบเล็ก/เอียง/ผิวนุ่ม สะท้อนเสียงไม่ดี
+4. ระยะที่ผู้ใช้วางจริงต่างจากที่คิด (ยังไม่ได้วัดด้วยไม้บรรทัด)
+
+วิธีแยก: วัดระยะจริงด้วยไม้บรรทัด ใช้แผ่นแข็งเรียบตั้งฉาก ยกหัววัดให้พ้นโต๊ะ/สิ่งกีดขวาง แล้วไล่ระยะ 40 → 35 → 30 → 25 → 22 → 20 cm บันทึก Serial ทุกจุด
+
+### 9.3 การตรวจขอบเขตตามที่ต้องการ (ตรวจจากโค้ด + unit test, ยังไม่ทดสอบกับฮาร์ดแวร์ทุกจุด)
+
+| เงื่อนไข | Firmware | เว็บ |
+|---|---|---|
+| sensorValid=true, d ≤ 25 cm (≥ 20) | 100 % ✓ (clamp) | 100 % ✓ |
+| sensorValid=true, d ≥ 100 cm | 0 % ✓ (ทดสอบจริง 126–196 cm) | 0 % ✓ (ทดสอบจริง 136.2 cm) |
+| อ่านไม่ได้ / d < 20 cm | SENSOR ERROR ไม่ส่งค่าระดับ ✓ | SENSOR ERROR ✓ (ทดสอบจริง) |
+
+## 10. รายการแก้ไขในอนาคต (รวม · **ยังไม่อนุญาตให้แก้หรือ Deploy**)
+
+1. เกณฑ์สีไฟ/สถานะใหม่ตามระยะ Dist (หัวข้อ 8.2)
+2. Calibration ใหม่ที่ผู้ใช้เสนอ (บันทึก 26 พ.ย. 2026 · ยังไม่อนุญาต):
+
+   | ค่า | ปัจจุบัน | ใหม่ |
+   |---|---|---|
+   | Empty distance | 100 cm | 100 cm |
+   | Full distance | 25 cm | **30 cm** |
+   | Water height (span) | 75 cm | **70 cm** |
+   | สูตร % | clamp((100 − d) / 75 × 100, 0, 100) | **clamp((100 − d) / 70 × 100, 0, 100)** |
+   | 100 % เมื่อ (sensorValid=true) | d ≤ 25 cm | **d ≤ 30 cm** |
+
+   สถานะ/LED ใหม่ตามระยะ (แทนหัวข้อ 8.2 ส่วนที่ต่างกัน): ไฟแดง DANGER 0–30 cm · ไฟเหลือง WARNING > 30–50 cm · ไฟเขียว NORMAL > 50 cm · SENSOR ERROR แดงกะพริบเหมือนเดิม (รวมกรณี < 20 cm / อ่านไม่ได้)
+   - เส้นเตือนบนรูปถังต้องย้ายตาม: WARNING ที่ d = 50 cm = (100 − 50) / 70 = **71.4 %**, DANGER ที่ d = 30 cm = **100 %**
+   - ต้องปรับ Firmware (`SENSOR_TO_FULL_CM 30`, สถานะจากระยะ), OLED, LED, payload `status` ที่ส่ง ThingsBoard, เว็บ (`LIVE_SETTINGS` tankHeight 70 / sensorOffset 30, การคำนวณสถานะ, เส้นเตือนรูปถัง, Alerts) และ unit test ให้ตรงกันทั้งหมด
+   - ต้องทดสอบระยะจริงด้วยไม้บรรทัดก่อนยืนยันค่า calibration
+3. พิจารณาให้ค่าที่ติดขอบล่าง (≈ ระยะต่ำสุดของเซนเซอร์) แสดงเป็น "ใกล้เกินระยะวัด" แทนตัวเลขปกติ
+4. รูปถังปัดเป็นจำนวนเต็ม (95 %) ขณะการ์ดแสดง 94.9 % → พิจารณาแสดงทศนิยมเท่ากัน
+
+## 11. ทดสอบตามระยะ (เกณฑ์ปัจจุบัน 70/85 %)
+
+| ขั้น | ระยะที่ผู้ใช้ตั้ง | Serial (7 pings) | Firmware | เว็บ Dashboard | ThingsBoard | OLED / LED | ผล |
+|---|---|---|---|---|---|---|---|
+| ก | 60 cm (ตามแผน) | 1880–1905 µs = 32.9–33.3 cm นิ่ง | 33.3 cm, 66.7 cm, 88.93 %, DANGER | 33.3 cm, 66.7 cm, 88.9 %, DANGER (Online) | HTTP 200 ok=596–598, `sensorValid:true, simulated:false` | ⏳ รอผู้ใช้ | ⚠️ Serial = เว็บ = ThingsBoard ตรงกัน แต่ระยะที่วัดได้ 33.3 cm ไม่ใช่ 60 cm → รอยืนยันระยะจริง / สิ่งกีดขวางในลำคลื่น |
+
+| ก (ซ้ำ) | 60 cm (ตามแผน) | รอบ 1: 2/7 (22.6, 20.7 cm) · รอบ 2: 110–159 cm กระจาย · รอบ 3: 71 / 40 / 26.0 ×4 / 73 cm | รอบ 1 SENSOR_ERROR (TOO_FEW_SAMPLES) · รอบ 2 119.4 cm 0 % NORMAL · รอบ 3 26.0 cm 98.67 % DANGER | รอบ 1: SENSOR ERROR (ตรง Serial) | HTTP 200 ok=626–628 | ⏳ | ⚠️ ค่าไม่นิ่ง (เป้า/หัววัดน่าจะยังขยับ) ยังไม่ได้ผลที่ 60 cm · **พบว่าเซนเซอร์อ่านได้ 26.0, 22.6, 20.7 cm → ค่า ~29 cm ก่อนหน้าไม่ใช่ขีดจำกัดต่ำสุดของหัววัด** (สนับสนุนสาเหตุข้อ 2–4 ในหัวข้อ 9.2) |
+
+หมายเหตุ: JSN-SR04T มีมุมลำคลื่นกว้าง วัตถุอื่นที่ใกล้กว่าเป้า (ขอบโต๊ะ, มือ, พื้น, ผนังด้านข้าง) จะถูกวัดก่อน

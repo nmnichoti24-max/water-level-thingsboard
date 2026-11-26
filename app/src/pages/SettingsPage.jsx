@@ -7,7 +7,7 @@ import { RequestError } from '../components/LoadState'
 const FORM = [
   ['tankHeight', 'ความสูงช่วงใช้งาน', 'cm'], ['sensorOffset', 'ระยะเผื่อติดตั้งเหนือระดับเต็ม', 'cm'],
   ['minDistance', 'ระยะเซนเซอร์ต่ำสุด', 'cm'], ['maxDistance', 'ระยะเซนเซอร์สูงสุด', 'cm'],
-  ['warning', 'เกณฑ์ WARNING', '%'], ['danger', 'เกณฑ์ DANGER', '%'],
+  ['warningDistance', 'เกณฑ์ WARNING (ระยะไม่เกิน)', 'cm'], ['dangerDistance', 'เกณฑ์ DANGER (ระยะไม่เกิน)', 'cm'],
   ['refreshSeconds', 'รอบรีเฟรช Live', 'วินาที'], ['staleSeconds', 'แสดง Offline หลังผ่าน', 'วินาที'],
 ]
 

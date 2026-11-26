@@ -1,5 +1,5 @@
 import { Bell, Droplets, Gauge, Radio, Ruler, Waves } from 'lucide-react'
-import { formatDate, formatNumber } from '../model'
+import { formatDate, formatNumber, percentAtDistance } from '../model'
 import { STATUS_LABEL, Status } from '../components/MonitorControls'
 import { RequestError } from '../components/LoadState'
 import HistoryPage from './HistoryPage'
@@ -15,8 +15,8 @@ function Tank({ reading, stale, settings }) {
         <div className="tank-top" />
         <div className="tank-window">
           {hasValue && <div className={'tank-fill' + (stale ? ' stale' : '')} style={{ height: reading.percent + '%' }}><div className="water-surface" /></div>}
-          {[['warning', settings.warning, 'เตือน'], ['danger', settings.danger, 'อันตราย']].map(([kind, at, label]) => Number.isFinite(at) &&
-            <div key={kind} className={'gauge-mark ' + kind} style={{ bottom: at + '%' }} aria-hidden="true"><span>{label} {at}%</span></div>)}
+          {[['warning', settings.warningDistance, 'เตือน'], ['danger', settings.dangerDistance, 'อันตราย']].map(([kind, cm, label]) => Number.isFinite(cm) &&
+            <div key={kind} className={'gauge-mark ' + kind} style={{ bottom: percentAtDistance(cm, settings) + '%' }} aria-hidden="true"><span>{label} ≤{cm} cm · {formatNumber(percentAtDistance(cm, settings))}%</span></div>)}
           <div className="tank-value"><strong>{formatNumber(reading.percent, 0)}<small>{hasValue ? '%' : ''}</small></strong><span>{hasValue ? 'ความจุช่วงใช้งาน' : 'ไม่มีค่าที่ใช้ได้'}</span></div>
         </div>
         <div className="tank-base" />
@@ -52,7 +52,7 @@ export default function DashboardPage({ monitor, settings, range, setRange, isSi
     {monitor.freshness === 'offline' && !isSimulated && <p role="alert" className="notice error">Offline · ESP32-S3 ไม่ได้ส่งข้อมูลมา {formatNumber(monitor.ageSeconds, 0)} วินาที ค่าที่เห็นเป็นค่าครั้งก่อน ตรวจไฟเลี้ยง สาย USB และ Wi-Fi ของบอร์ด</p>}
     {monitor.freshness === 'stale' && <p role="status" className="notice">Stale Data · ไม่มีข้อมูลใหม่เกิน {settings.staleSeconds} วินาที ระบบจะแสดง Offline เมื่อเกิน {settings.staleSeconds * 3} วินาที</p>}
     {mismatch && <p role="status" className="notice">อุปกรณ์รายงาน {monitor.reportedStatus} แต่เว็บคำนวณได้ {reading.state} · ค่าคาลิเบรตหรือเกณฑ์ในหน้าตั้งค่าไม่ตรงกับ config.h ของบอร์ด</p>}
-    {['WARNING', 'DANGER'].includes(reading.state) && !stale && <p role="status" className={'notice alert-banner ' + reading.state.toLowerCase()}><Bell size={17} />{STATUS_LABEL[reading.state]} · {formatNumber(reading.percent)}% เมื่อเทียบกับเกณฑ์ {reading.state === 'DANGER' ? settings.danger : settings.warning}%</p>}
+    {['WARNING', 'DANGER'].includes(reading.state) && !stale && <p role="status" className={'notice alert-banner ' + reading.state.toLowerCase()}><Bell size={17} />{STATUS_LABEL[reading.state]} · ระยะ {formatNumber(reading.distance)} cm (เกณฑ์ ≤ {reading.state === 'DANGER' ? settings.dangerDistance : settings.warningDistance} cm) · {formatNumber(reading.percent)}%</p>}
     <div className="overview-grid">
       <Tank reading={reading} stale={stale} settings={settings} />
       <div className="metrics-grid">

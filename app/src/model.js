@@ -1,13 +1,17 @@
 export const RANGES = { '1h': 3600000, '6h': 21600000, '24h': 86400000, '7d': 604800000 }
+// Status comes from the measured distance: distance <= dangerDistance -> DANGER,
+// distance <= warningDistance -> WARNING, otherwise NORMAL. Percent is for display only.
 export const DEFAULT_SETTINGS = {
   tankHeight: 100, sensorOffset: 0, minDistance: 20, maxDistance: 600,
-  warning: 70, danger: 85, refreshSeconds: 10, staleSeconds: 60,
+  warningDistance: 30, dangerDistance: 15, refreshSeconds: 10, staleSeconds: 60,
 }
-export const CLOUD_SIM_SETTINGS = { ...DEFAULT_SETTINGS, sensorOffset: 30 }
-// Matches firmware/WaterGuard_ESP32S3/config.h defaults: SENSOR_TO_FULL_CM 25, SENSOR_TO_BOTTOM_CM 100.
-// sensorOffset 0 would put the full-tank surface inside the ultrasonic blind zone (< minDistance).
-// refreshSeconds 5 = firmware TELEMETRY_INTERVAL_MS.
-export const LIVE_SETTINGS = { ...DEFAULT_SETTINGS, tankHeight: 75, sensorOffset: 25, refreshSeconds: 5 }
+// SIM device (tankHeight 100, sensorOffset 30): 60 / 45 cm = the former 70 / 85 % thresholds.
+export const CLOUD_SIM_SETTINGS = { ...DEFAULT_SETTINGS, sensorOffset: 30, warningDistance: 60, dangerDistance: 45 }
+// Matches firmware/WaterGuard_ESP32S3/config.h: SENSOR_TO_FULL_CM 30, SENSOR_TO_BOTTOM_CM 100,
+// WARNING_DISTANCE_CM 50, DANGER_DISTANCE_CM 30. refreshSeconds 5 = firmware TELEMETRY_INTERVAL_MS.
+export const LIVE_SETTINGS = {
+  ...DEFAULT_SETTINGS, tankHeight: 70, sensorOffset: 30, warningDistance: 50, dangerDistance: 30, refreshSeconds: 5,
+}
 export const formatNumber = (value, digits = 1) => Number.isFinite(value)
   ? new Intl.NumberFormat('th-TH', { maximumFractionDigits: digits }).format(value) : '—'
 export const formatDate = (value) => value
@@ -18,10 +22,10 @@ export function validateSettings(input) {
   if (keys.some((key) => typeof input[key] !== 'number' || !Number.isFinite(input[key]))) {
     return 'กรอกตัวเลขให้ครบทุกช่อง'
   }
-  const { tankHeight, sensorOffset, minDistance, maxDistance, warning, danger, refreshSeconds, staleSeconds } = input
+  const { tankHeight, sensorOffset, minDistance, maxDistance, warningDistance, dangerDistance, refreshSeconds, staleSeconds } = input
   if (tankHeight <= 0 || tankHeight > 10000 || sensorOffset < 0 || sensorOffset > 10000) return 'ความสูงต้องมากกว่า 0 และระยะเผื่อติดตั้งต้องไม่ติดลบ'
   if (minDistance < 0 || minDistance >= maxDistance || maxDistance > 20000) return 'ระยะต่ำสุดต้องน้อยกว่าระยะสูงสุด'
-  if (warning <= 0 || warning >= danger || danger > 100) return 'ใช้เกณฑ์ 0 < WARNING < DANGER ≤ 100'
+  if (dangerDistance <= 0 || dangerDistance >= warningDistance || warningDistance > maxDistance) return 'ใช้เกณฑ์ระยะ 0 < DANGER < WARNING ≤ ระยะสูงสุด'
   if (!Number.isInteger(refreshSeconds) || refreshSeconds < 5 || refreshSeconds > 300) return 'รอบรีเฟรชต้องเป็นจำนวนเต็ม 5–300 วินาที'
   if (!Number.isInteger(staleSeconds) || staleSeconds <= refreshSeconds || staleSeconds > 86400) return 'เวลา Offline ต้องมากกว่ารอบรีเฟรช และไม่เกิน 86,400 วินาที'
   return ''
@@ -33,10 +37,10 @@ export function measure(sample, settings) {
   if (sensorValid === false || !Number.isFinite(distance) || distance < settings.minDistance || distance > settings.maxDistance) {
     return { state: 'SENSOR_ERROR', ts }
   }
-  const { tankHeight, sensorOffset, warning, danger } = settings
+  const { tankHeight, sensorOffset, warningDistance, dangerDistance } = settings
   const level = Math.max(0, Math.min(tankHeight, tankHeight - (distance - sensorOffset)))
   const percent = Math.round((level / tankHeight) * 10000) / 100
-  const state = percent >= danger ? 'DANGER' : percent >= warning ? 'WARNING' : 'NORMAL'
+  const state = distance <= dangerDistance ? 'DANGER' : distance <= warningDistance ? 'WARNING' : 'NORMAL'
   return { state, level, percent, distance, ts }
 }
 
@@ -48,11 +52,18 @@ export function freshness(ageSeconds, staleSeconds) {
 }
 
 // Firmware values that reproduce the web calibration, so the device and the website agree.
-export function firmwareCalibration({ tankHeight, sensorOffset, minDistance, maxDistance, warning, danger }) {
+export function firmwareCalibration({ tankHeight, sensorOffset, minDistance, maxDistance, warningDistance, dangerDistance }) {
   return {
     SENSOR_TO_FULL_CM: sensorOffset, SENSOR_TO_BOTTOM_CM: sensorOffset + tankHeight,
-    MIN_DISTANCE_CM: minDistance, MAX_DISTANCE_CM: maxDistance, WARNING_PERCENT: warning, DANGER_PERCENT: danger,
+    MIN_DISTANCE_CM: minDistance, MAX_DISTANCE_CM: maxDistance,
+    WARNING_DISTANCE_CM: warningDistance, DANGER_DISTANCE_CM: dangerDistance,
   }
+}
+
+// Tank-gauge height (%) of the water surface at a given distance, clamped to 0-100.
+export function percentAtDistance(distance, { tankHeight, sensorOffset }) {
+  const level = Math.max(0, Math.min(tankHeight, tankHeight - (distance - sensorOffset)))
+  return Math.round((level / tankHeight) * 10000) / 100
 }
 
 export function summarize(points) {
@@ -91,7 +102,7 @@ export function estimateRuntime({ capacity, voltage, efficiency, current }) {
   return Number.isFinite(hours) ? { storedWh, usableWh, loadWatts, hours, minutes: hours * 60 } : null
 }
 
-const STORAGE_KEY = 'water-monitor-prefs-v1'
+const STORAGE_KEY = 'water-monitor-prefs-v2'  // v2: distance thresholds, LIVE 70/30 cm
 const SOURCES = { esp32: LIVE_SETTINGS, 'cloud-sim': CLOUD_SIM_SETTINGS }
 
 export function loadPreferences(scope) {

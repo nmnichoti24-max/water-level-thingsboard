@@ -85,7 +85,7 @@
 // ---------------------------------------------------------------------------
 #define TRIG_PULSE_US        20
 #define ECHO_TIMEOUT_US      38000UL
-#define PING_GAP_MS          80     // >=60 ms between pings so old echoes die out
+#define PING_GAP_MS          100    // between pings so old echoes die out (JSN-SR04T: ECHO ends ~48 ms after TRIG)
 #define SAMPLES_PER_READING  7      // median of N pings
 #define MIN_VALID_SAMPLES    4      // fewer valid pings than this = Sensor Error
 #define AIR_TEMPERATURE_C    30.0f  // speed of sound = 331.3 + 0.606 * T (m/s)
@@ -104,10 +104,10 @@
 //                         (= web Settings "ระยะเผื่อติดตั้งเหนือระดับเต็ม", sensorOffset)
 //   SENSOR_TO_BOTTOM_CM = distance from sensor face to the tank bottom / EMPTY level
 //                         (= sensorOffset + web Settings "ความสูงช่วงใช้งาน", tankHeight)
-// Defaults: empty = 100 cm, full = 25 cm (web LIVE profile: tankHeight 75 cm, sensorOffset
-// 25 cm). Re-measure at the real tank and change both here and in web Settings.
+// Defaults: empty = 100 cm, full = 30 cm (web LIVE profile: tankHeight 70 cm, sensorOffset
+// 30 cm). Re-measure at the real tank and change both here and in web Settings.
 // ---------------------------------------------------------------------------
-#define SENSOR_TO_FULL_CM   25.0f
+#define SENSOR_TO_FULL_CM   30.0f
 #define SENSOR_TO_BOTTOM_CM 100.0f
 
 // SIM mode only: fixed calibration of the web cloud-sim profile (CLOUD_SIM_SETTINGS:
@@ -115,11 +115,14 @@
 #define SIM_SENSOR_TO_FULL_CM   30.0f
 #define SIM_SENSOR_TO_BOTTOM_CM 130.0f
 
-// Status thresholds (percent). Same rule as web + simulator:
-//   NORMAL < WARNING_PERCENT <= WARNING < DANGER_PERCENT <= DANGER
-// The web recomputes status from distance with the user's Settings; keep these equal.
-#define WARNING_PERCENT 70.0f
-#define DANGER_PERCENT  85.0f
+// Status from the measured distance (same rule as the web, which recomputes it from distance):
+//   distance <= DANGER_DISTANCE_CM -> DANGER (red), <= WARNING_DISTANCE_CM -> WARNING (yellow),
+//   otherwise NORMAL (green). waterPercent is display only.
+#define WARNING_DISTANCE_CM 50.0f
+#define DANGER_DISTANCE_CM  30.0f
+// SIM mode: 60 / 45 cm on the 30/130 SIM calibration = the former 70 / 85 % cycle statuses.
+#define SIM_WARNING_DISTANCE_CM 60.0f
+#define SIM_DANGER_DISTANCE_CM  45.0f
 
 // ---------------------------------------------------------------------------
 // Timing

@@ -41,8 +41,8 @@
 static_assert(SENSOR_TO_BOTTOM_CM > SENSOR_TO_FULL_CM, "SENSOR_TO_BOTTOM_CM must be greater than SENSOR_TO_FULL_CM");
 static_assert(SENSOR_TO_FULL_CM >= MIN_DISTANCE_CM, "Full-tank surface must be outside the sensor blind zone (>= MIN_DISTANCE_CM)");
 static_assert(SENSOR_TO_BOTTOM_CM <= MAX_DISTANCE_CM, "Tank bottom must be within MAX_DISTANCE_CM");
-static_assert(WARNING_PERCENT > 0 && WARNING_PERCENT < DANGER_PERCENT && DANGER_PERCENT <= 100,
-              "Use 0 < WARNING_PERCENT < DANGER_PERCENT <= 100");
+static_assert(DANGER_DISTANCE_CM > 0 && DANGER_DISTANCE_CM < WARNING_DISTANCE_CM && WARNING_DISTANCE_CM <= MAX_DISTANCE_CM,
+              "Use 0 < DANGER_DISTANCE_CM < WARNING_DISTANCE_CM <= MAX_DISTANCE_CM");
 
 // Declared before any function: the Arduino builder inserts prototypes above the first one.
 struct Reading {
@@ -61,7 +61,7 @@ constexpr bool sameText(const char *a, const char *b) {
 static_assert(!sameText(THINGSBOARD_SIM_DEVICE_TOKEN, THINGSBOARD_DEVICE_TOKEN),
               "SIM and LIVE tokens are identical - simulated data would reach the LIVE device");
 
-static const char *FIRMWARE_VERSION = "1.2.0";
+static const char *FIRMWARE_VERSION = "1.3.0";
 
 #if WG_MODE == WG_MODE_SIM
 static const char *MODE_NAME = "SIM";
@@ -269,9 +269,9 @@ static uint64_t unixMillis() {
   return (uint64_t)tv.tv_sec * 1000ULL + tv.tv_usec / 1000;
 }
 
-static const char *statusFor(double percent) {
-  if (percent >= DANGER_PERCENT) return "DANGER";
-  if (percent >= WARNING_PERCENT) return "WARNING";
+static const char *statusFor(double distanceCm, double warningCm = WARNING_DISTANCE_CM, double dangerCm = DANGER_DISTANCE_CM) {
+  if (distanceCm <= dangerCm) return "DANGER";
+  if (distanceCm <= warningCm) return "WARNING";
   return "NORMAL";
 }
 
@@ -382,7 +382,7 @@ static void echoTiming() {
   r.levelCm = level < 0 ? 0 : level > span ? span : level;
   r.percent = round(r.levelCm / span * 10000.0) / 100.0;
   r.levelCm = round(r.levelCm * 10.0) / 10.0;
-  r.status = statusFor(r.percent);
+  r.status = statusFor(r.distanceCm);
   r.valid = true;
   return r;
 }
@@ -397,9 +397,10 @@ static void echoTiming() {
   int levelStep = rising - abs(rising - cycleStep);
   double percent = 20 + 5 * levelStep;
   const double span = SIM_SENSOR_TO_BOTTOM_CM - SIM_SENSOR_TO_FULL_CM;
-  Reading r = { true, nullptr, 0, 0, 0, percent, statusFor(percent) };
+  Reading r = { true, nullptr, 0, 0, 0, percent, nullptr };
   r.levelCm = round(span * percent / 100.0 * 10.0) / 10.0;
   r.distanceCm = round((SIM_SENSOR_TO_FULL_CM + span - r.levelCm) * 10.0) / 10.0;
+  r.status = statusFor(r.distanceCm, SIM_WARNING_DISTANCE_CM, SIM_DANGER_DISTANCE_CM);
   return r;
 }
 
@@ -543,9 +544,9 @@ void setup() {
   Serial.printf("MODE: %s | target: %s on %s (token hidden)\n", MODE_NAME, DEVICE_NAME, THINGSBOARD_HOST);
   if (WG_MODE == WG_MODE_SIM)
     Serial.println("*** SIMULATED DATA (SIM) - NOT A REAL SENSOR - sent to the -SIM device only ***");
-  Serial.printf("Calibration: full=%.1f cm bottom=%.1f cm span=%.1f cm range=%.0f-%.0f cm thresholds W=%.0f%% D=%.0f%%\n",
+  Serial.printf("Calibration: full=%.1f cm bottom=%.1f cm span=%.1f cm range=%.0f-%.0f cm status by distance: DANGER<=%.0f WARNING<=%.0f cm\n",
                 SENSOR_TO_FULL_CM, SENSOR_TO_BOTTOM_CM, SENSOR_TO_BOTTOM_CM - SENSOR_TO_FULL_CM,
-                MIN_DISTANCE_CM, MAX_DISTANCE_CM, WARNING_PERCENT, DANGER_PERCENT);
+                MIN_DISTANCE_CM, MAX_DISTANCE_CM, DANGER_DISTANCE_CM, WARNING_DISTANCE_CM);
 
   rgbSelfTest();
   oledInit();

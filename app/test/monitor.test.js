@@ -37,7 +37,7 @@ test('the simulation covers each threshold and event history omits repeats', () 
 
 test('settings reject overlapping thresholds and invalid polling; battery uses watt-hours', () => {
   assert.equal(validateSettings(DEFAULT_SETTINGS), '')
-  assert.match(validateSettings({ ...DEFAULT_SETTINGS, warning: 85 }), /WARNING/)
+  assert.match(validateSettings({ ...DEFAULT_SETTINGS, warningDistance: 10 }), /WARNING/)
   assert.match(validateSettings({ ...DEFAULT_SETTINGS, refreshSeconds: 2 }), /5–300/)
   assert.equal(estimateRuntime({ capacity: 10000, voltage: 3.7, efficiency: 85, current: 180 }).hours.toFixed(2), '34.94')
   assert.equal(estimateRuntime({ capacity: 10000, voltage: 3.7, efficiency: 101, current: 180 }), null)

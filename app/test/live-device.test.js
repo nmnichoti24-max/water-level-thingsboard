@@ -18,6 +18,26 @@ test('firmware config.h defaults reproduce the web LIVE calibration and threshol
   assert.equal(LIVE_SETTINGS.refreshSeconds, define('TELEMETRY_INTERVAL_MS') / 1000)
 })
 
+test('LIVE status follows distance: <=30 red, >30-50 yellow, >50 green; <=30 cm is 100 %', () => {
+  const at = (distance) => measure({ distance, sensorValid: true }, LIVE_SETTINGS)
+  assert.deepEqual([20, 25, 30].map((d) => [at(d).state, at(d).percent]), [['DANGER', 100], ['DANGER', 100], ['DANGER', 100]])
+  assert.deepEqual([30.1, 42, 50].map((d) => at(d).state), ['WARNING', 'WARNING', 'WARNING'])
+  assert.deepEqual([50.1, 60, 100, 150].map((d) => at(d).state), ['NORMAL', 'NORMAL', 'NORMAL', 'NORMAL'])
+  assert.equal(at(60).percent, 57.14)
+  assert.equal(at(100).percent, 0)
+  assert.equal(at(150).percent, 0)
+  assert.equal(measure({ distance: 25, sensorValid: false }, LIVE_SETTINGS).state, 'SENSOR_ERROR')
+  assert.equal(at(19.9).state, 'SENSOR_ERROR')
+})
+
+test('SIM distance thresholds keep the former 70 / 85 % statuses on the SIM calibration', () => {
+  for (let percent = 0; percent <= 100; percent += 5) {
+    const distance = 130 - percent
+    const expected = percent >= 85 ? 'DANGER' : percent >= 70 ? 'WARNING' : 'NORMAL'
+    assert.equal(measure({ distance, sensorValid: true }, CLOUD_SIM_SETTINGS).state, expected, 'percent ' + percent)
+  }
+})
+
 test('firmware SIM calibration matches the web cloud-sim profile, independent of LIVE', () => {
   const sim = firmwareCalibration(CLOUD_SIM_SETTINGS)
   assert.equal(define('SIM_SENSOR_TO_FULL_CM'), sim.SENSOR_TO_FULL_CM)
@@ -30,7 +50,7 @@ test('firmware formula and web formula give the same level, percent and status',
   const firmware = (distance) => {
     const level = Math.max(0, Math.min(span, span - (distance - full)))
     const percent = Math.round(level / span * 10000) / 100
-    return { percent, state: percent >= define('DANGER_PERCENT') ? 'DANGER' : percent >= define('WARNING_PERCENT') ? 'WARNING' : 'NORMAL' }
+    return { percent, state: distance <= define('DANGER_DISTANCE_CM') ? 'DANGER' : distance <= define('WARNING_DISTANCE_CM') ? 'WARNING' : 'NORMAL' }
   }
   for (let distance = 20; distance <= 600; distance += 0.1) {
     const d = Math.round(distance * 10) / 10
@@ -78,5 +98,5 @@ test('a firmware sensor error payload reaches the web as Sensor Error, never as 
 
 test('CSV export labels LIVE rows as LIVE', () => {
   const csv = historyCsv([measure({ ts: 1_800_000_000_000, distance: 30, sensorValid: true }, LIVE_SETTINGS)], 'esp32')
-  assert.match(csv, /,LIVE,30,70,93.33,DANGER/)
+  assert.match(csv, /,LIVE,30,70,100,DANGER/)
 })
