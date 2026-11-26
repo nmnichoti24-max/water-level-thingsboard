@@ -204,3 +204,49 @@
 | ก (ซ้ำ) | 60 cm (ตามแผน) | รอบ 1: 2/7 (22.6, 20.7 cm) · รอบ 2: 110–159 cm กระจาย · รอบ 3: 71 / 40 / 26.0 ×4 / 73 cm | รอบ 1 SENSOR_ERROR (TOO_FEW_SAMPLES) · รอบ 2 119.4 cm 0 % NORMAL · รอบ 3 26.0 cm 98.67 % DANGER | รอบ 1: SENSOR ERROR (ตรง Serial) | HTTP 200 ok=626–628 | ⏳ | ⚠️ ค่าไม่นิ่ง (เป้า/หัววัดน่าจะยังขยับ) ยังไม่ได้ผลที่ 60 cm · **พบว่าเซนเซอร์อ่านได้ 26.0, 22.6, 20.7 cm → ค่า ~29 cm ก่อนหน้าไม่ใช่ขีดจำกัดต่ำสุดของหัววัด** (สนับสนุนสาเหตุข้อ 2–4 ในหัวข้อ 9.2) |
 
 หมายเหตุ: JSN-SR04T มีมุมลำคลื่นกว้าง วัตถุอื่นที่ใกล้กว่าเป้า (ขอบโต๊ะ, มือ, พื้น, ผนังด้านข้าง) จะถูกวัดก่อน
+
+## 12. Firmware 1.3.0 + เว็บเกณฑ์ตามระยะ (26 พ.ย. 2026 · ผู้ใช้อนุญาตให้แก้ / Upload / Deploy)
+
+### 12.1 วิเคราะห์เซนเซอร์ก่อนแก้ (Firmware 1.2.0, เป้าตั้งไว้ 60 cm, 60 วินาที)
+
+| ค่า | ผล |
+|---|---|
+| ping ทั้งหมด / valid / NO_ECHO | 84 / 84 / 0 |
+| Pulse | 1198–1202 µs (rise หลัง TRIG 12.3 ms คงที่) |
+| ระยะ min / max / median / SD | 20.9 / 21.0 / 21.0 cm / **0.0 cm** |
+| อยู่ในช่วง 55–65 cm | 0 / 84 |
+
+สรุป: ค่านิ่งมาก (SD 0.0) → ไม่ใช่สัญญาณรบกวนไฟฟ้า/Wi-Fi/จังหวะ ping · เซนเซอร์ได้ยินวัตถุแข็งที่ ~21 cm (ตัวยึด/ขอบโต๊ะ/สิ่งของในลำคลื่น) ก่อนเป้าที่ 60 cm · ค่ากระโดด 20/159 cm ก่อนหน้าเกิดขณะขยับอุปกรณ์
+
+### 12.2 สิ่งที่แก้ (commit `ec97b9e`)
+
+| ส่วน | ค่า |
+|---|---|
+| Calibration LIVE | empty 100 cm, full 30 cm, span 70 cm · % = clamp((100 − d) / 70 × 100, 0, 100) |
+| สถานะ (Firmware + OLED + LED + payload `status` + เว็บ) | d ≤ 30 DANGER แดง · 30 < d ≤ 50 WARNING เหลือง · d > 50 NORMAL เขียว · อ่านไม่ได้ / d < 20 → SENSOR ERROR แดงกะพริบ ไม่ส่งค่าระดับ |
+| SIM | calibration 30/130 เดิม · เกณฑ์ 60/45 cm = 70/85 % เดิม (มี unit test ยืนยัน) |
+| ping gap | 100 ms · Median 7 ครั้ง ต้อง valid ≥ 4 (ไม่ลดเกณฑ์) |
+| เว็บ | Settings เป็นเกณฑ์ระยะ (cm) · เส้นเตือนรูปถัง ≤50 cm = 71.4 %, ≤30 cm = 100 % · localStorage key v2 |
+| ไม่เปลี่ยน | Login, LIVE/SIM, ACL บัญชี, TLS, Token |
+
+### 12.3 ผลทดสอบจริง
+
+| รายการ | ผล |
+|---|---|
+| สำรอง Firmware 1.2.0 (source + .bin ที่อยู่บนบอร์ด) | ✅ `outputs/work/firmware-backups/fw-1.2.0-on-board-*` |
+| Unit tests | ✅ 45/45 (รวม Firmware = เว็บ ทุกระยะ 20–600 cm, เกณฑ์สีใหม่, SIM คงเดิม) |
+| Build Vercel / Pages | ✅ |
+| Compile + Upload 1.3.0 ผ่าน COM3 | ✅ Hash verified · 1,160,084 B (36 %) |
+| Wi-Fi / NTP / HTTPS | ✅ IP 172.20.10.2, NTP synced 08:23:27 UTC, HTTP 200 ok=40 fail=0 |
+| Commit / Push / main | ✅ `ec97b9e` บน `feature/esp32s3-live-hardware` และ `main` |
+| Vercel Production | ✅ READY https://esp32s3-water-level-monitor.vercel.app |
+| GitHub Pages | ✅ bundle `index-De_0e3oG.js` มี LIVE 70/30, เกณฑ์ 50/30 cm |
+| เว็บ Production (หลังล้าง cache) | ✅ LIVE เลือกเป็นค่าเริ่มต้น + มี SIM · เส้นเตือน "เตือน ≤50 cm · 71.4 %", "อันตราย ≤30 cm · 100 %" · สถานะ SENSOR ERROR ตรงกับ Serial |
+| เซนเซอร์หลังอัปโหลด | ❌ ส่วนใหญ่ NO_ECHO, บางรอบ 2/7 (104.8 cm) → SENSOR ERROR ตามจริง (ไม่ล็อกค่า ไม่สร้างค่าปลอม) · ยังไม่ได้ทดสอบ NORMAL/WARNING/DANGER ด้วย 1.3.0 |
+| OLED / LED ด้วยตา, ไฟเหลือง, Session Expired | ⏳ ยังไม่ได้ทดสอบ |
+
+หมายเหตุ: หลัง Deploy หน้าเว็บที่เปิดค้างอาจใช้ไฟล์เก่าจาก cache ของ GitHub Pages ได้ถึง 10 นาที ให้กด Ctrl+F5
+
+### 12.4 ทางเลือกสำรองสำหรับการนำเสนอ
+
+ถ้าเซนเซอร์ยังไม่ได้ echo ที่นิ่งตอนนำเสนอ ให้เลือก Dropdown **SIM · ESP32-S3-Water-Level-SIM** (ข้อมูลจำลอง ติดป้าย "ข้อมูลจำลอง (SIM)" ชัดเจน ไม่ปนกับ LIVE) และแสดง LIVE ในสถานะ SENSOR ERROR เป็นตัวอย่างการจัดการข้อผิดพลาด
